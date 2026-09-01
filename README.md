@@ -81,19 +81,89 @@ They live under `/home/sehoon/data`, reached through the `data` symlink.
 모션 데이터는 수십 기가바이트라 저장소에 포함하지 않습니다.
 로컬의 `/home/sehoon/data` 아래에 두고 `data` 심볼릭 링크로 접근합니다.
 
-| dataset | contents | status |
+### Primary source — LAFAN1
+
+[LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset) is used
+as the input to retargeting. 4.6 hours, 77 sequences, 5 subjects, BVH at 30 fps.
+It was picked over the larger alternatives for three reasons:
+
+1. Format. BVH is consumed directly by the retargeting tools in use; no
+   intermediate body-model fitting step is required.
+2. Comparability. Prior work has published per-sequence tracking success rates
+   for four retargeting methods on a 21-sequence subset of LAFAN1, so results
+   here can be placed against known numbers rather than argued for.
+3. Motion range. Sequences run 5 s to 2 min and span walking and turning through
+   martial arts and dance, which separates the cases retargeting handles from
+   the ones it breaks on.
+
+리타게팅의 입력으로 LAFAN1을 사용합니다. 4.6시간, 77개 시퀀스, 5명, 30 fps
+BVH 형식입니다. 규모가 더 큰 후보들 대신 선택한 이유는 세 가지입니다.
+
+1. 형식. BVH는 사용할 리타게팅 도구가 그대로 받으므로, 중간에 몸 모델을
+   맞추는 변환 단계가 필요 없습니다.
+2. 비교 가능성. 선행 연구가 LAFAN1의 21개 시퀀스에 대해 네 가지 리타게팅
+   방법의 추적 성공률을 공개했습니다. 따라서 결과를 주장하는 대신 알려진
+   수치와 대조할 수 있습니다.
+3. 동작의 폭. 5초에서 2분까지 이어지며 걷기·회전부터 격투·춤까지 포함해,
+   리타게팅이 감당하는 구간과 깨지는 구간을 나누어 볼 수 있습니다.
+
+Starting sequence: `walk1_subject1`.
+
+### Reference — already-retargeted G1 motions
+
+These ship motions that have already been retargeted to the G1. They are not
+inputs; they are what this pipeline's own output is measured against.
+
+이들은 G1으로 리타게팅이 이미 끝난 결과물입니다. 입력이 아니라, 직접 만든
+리타게팅 결과를 대조할 기준으로 사용합니다.
+
+| dataset | contents | local path |
 | --- | --- | --- |
-| bones-studio/seed | motions already retargeted to G1 | local, `data/bones_seed` |
-| LAFAN1_Retargeting_Dataset | LAFAN1 motions retargeted to G1 | not downloaded yet |
+| lvhaidong/LAFAN1_Retargeting_Dataset | LAFAN1 retargeted to G1 | `data/lafan1_g1_ref` |
+| bones-studio/seed | 142,220 Vicon motions, human and G1 side | `data/bones_seed` |
 
-Both datasets ship motions that are already retargeted. They are used here as a
-reference to check this pipeline's own retargeting output against, not as its
-input.
+SEED is held for later. It is larger than LAFAN1 and pairs each motion with the
+capture subject's measured body dimensions, but its human-side data is in a
+custom format whose compatibility with the retargeting tools is unverified, and
+no published baseline exists for it. It becomes useful once the pipeline runs.
 
-두 데이터셋은 리타게팅이 이미 끝난 결과물입니다. 이 저장소에서는 입력이
-아니라, 직접 만든 리타게팅 결과가 맞는지 대조할 기준으로 사용합니다.
+SEED는 나중을 위해 보류합니다. LAFAN1보다 크고 배우의 실측 신체 치수가 함께
+제공되지만, 사람 쪽 데이터가 자체 형식이라 리타게팅 도구와 호환되는지
+확인되지 않았고 공개된 비교 기준도 없습니다. 파이프라인이 돌아간 뒤에
+쓸모가 생깁니다.
+
+AMASS is deferred to the training stage, where scale matters more than
+comparability.
+
+AMASS는 규모가 비교 가능성보다 중요해지는 학습 단계에서 사용합니다.
+
+## Tools
+
+| tool | role |
+| --- | --- |
+| [GMR](https://github.com/YanjieZe/GMR) | retargeting baseline to compare against; MIT, supports G1 and BVH input |
+| Isaac Sim 5.1 / Isaac Lab 2.3.2 | reference motion playback, and RL training in stage 4 |
+
+Retargeting itself needs no physics simulation — it is a kinematics problem.
+The simulator enters at playback and at policy training.
+
+리타게팅 자체는 물리 시뮬레이션이 필요 없는 기구학 문제입니다.
+시뮬레이터는 레퍼런스 모션 재생과 정책 학습 단계에서 사용합니다.
+
+## Background
+
+The premise that retargeting quality is worth treating as its own problem comes
+from *Retargeting Matters: General Motion Retargeting for Humanoid Motion
+Tracking* (ICRA 2026), which showed that artifacts left in retargeted
+trajectories — foot sliding, self-penetration, physically infeasible poses —
+measurably reduce the robustness of the tracking policy trained on them.
+
+리타게팅 품질을 별도의 문제로 다루는 근거는 Retargeting Matters: General
+Motion Retargeting for Humanoid Motion Tracking (ICRA 2026)입니다. 리타게팅
+결과에 남은 결함, 즉 발 미끄러짐·자기 충돌·물리적으로 불가능한 자세가
+그것으로 학습한 추적 정책의 안정성을 떨어뜨린다는 것을 보였습니다.
 
 ## Status
 
-Setting up. Nothing runs yet.
-구성 중이며, 아직 실행 가능한 코드는 없습니다.
+Datasets chosen and downloading. No pipeline code yet.
+데이터셋 선정 완료, 내려받는 중입니다. 파이프라인 코드는 아직 없습니다.
