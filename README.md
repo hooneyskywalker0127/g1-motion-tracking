@@ -107,15 +107,23 @@ BVH 형식입니다. 규모가 더 큰 후보들 대신 선택한 이유는 세 
 3. 동작의 폭. 5초에서 2분까지 이어지며 걷기·회전부터 격투·춤까지 포함해,
    리타게팅이 감당하는 구간과 깨지는 구간을 나누어 볼 수 있습니다.
 
-Starting sequence: `walk1_subject1`.
+Download `lafan1.zip` from the [official repo](https://github.com/ubisoft/ubisoft-laforge-animation-dataset/blob/master/lafan1/lafan1.zip)
+and unzip it into `data/lafan1`. All 77 `.bvh` files sit flat in that directory.
+
+[공식 저장소](https://github.com/ubisoft/ubisoft-laforge-animation-dataset/blob/master/lafan1/lafan1.zip)에서
+`lafan1.zip`을 받아 `data/lafan1`에 풉니다. bvh 77개가 그 아래 평평하게 놓입니다.
 
 ### Reference — already-retargeted G1 motions
 
 These ship motions that have already been retargeted to the G1. They are not
-inputs; they are what this pipeline's own output is measured against.
+inputs, and they are not ground truth either — they are another method's output.
+Comparing joint angles against them measures how far two methods diverge, not
+how much error either one carries. They are kept for qualitative reference only.
 
-이들은 G1으로 리타게팅이 이미 끝난 결과물입니다. 입력이 아니라, 직접 만든
-리타게팅 결과를 대조할 기준으로 사용합니다.
+이들은 G1으로 리타게팅이 이미 끝난 결과물입니다. 입력도 아니고 정답지도
+아닙니다. 다른 방법의 출력이므로, 관절각을 맞대어 보면 두 방법이 얼마나
+갈리는지가 나올 뿐 어느 쪽의 오차인지는 알 수 없습니다. 눈으로 참고하는
+용도로만 둡니다.
 
 | dataset | contents | local path |
 | --- | --- | --- |
@@ -141,7 +149,7 @@ AMASS는 규모가 비교 가능성보다 중요해지는 학습 단계에서 �
 
 | tool | role |
 | --- | --- |
-| [GMR](https://github.com/YanjieZe/GMR) | retargeting baseline to compare against; MIT, supports G1 and BVH input |
+| [GMR](https://github.com/YanjieZe/GMR) | retargeting tool in use; MIT, takes LAFAN1 BVH and outputs G1 joint angles |
 | Isaac Sim 5.1 / Isaac Lab 2.3.2 | reference motion playback, and RL training in stage 4 |
 
 Retargeting itself needs no physics simulation — it is a kinematics problem.
@@ -154,16 +162,33 @@ The simulator enters at playback and at policy training.
 
 The premise that retargeting quality is worth treating as its own problem comes
 from *Retargeting Matters: General Motion Retargeting for Humanoid Motion
-Tracking* (ICRA 2026), which showed that artifacts left in retargeted
+Tracking* ([arXiv:2510.02252](https://arxiv.org/abs/2510.02252)), which showed that artifacts left in retargeted
 trajectories — foot sliding, self-penetration, physically infeasible poses —
 measurably reduce the robustness of the tracking policy trained on them.
 
 리타게팅 품질을 별도의 문제로 다루는 근거는 Retargeting Matters: General
-Motion Retargeting for Humanoid Motion Tracking (ICRA 2026)입니다. 리타게팅
+Motion Retargeting for Humanoid Motion Tracking(arXiv:2510.02252)입니다. 리타게팅
 결과에 남은 결함, 즉 발 미끄러짐·자기 충돌·물리적으로 불가능한 자세가
 그것으로 학습한 추적 정책의 안정성을 떨어뜨린다는 것을 보였습니다.
 
 ## Status
 
-Datasets chosen and downloading. No pipeline code yet.
-데이터셋 선정 완료, 내려받는 중입니다. 파이프라인 코드는 아직 없습니다.
+Stages 1 and 2 are done. All 77 LAFAN1 sequences are retargeted to the G1 and
+verified: no NaNs, no joint-limit violations, frame counts matching the source
+BVH exactly. Stage 3 is in progress — per-sequence IK target error has been
+measured across all 496,672 frames, and the sequences to carry into policy
+training are being selected from it. Stage 4 has not started.
+
+Foot tracking error by motion type: walk 1.00 cm, dance 1.25, run 1.33,
+obstacles 1.65, fallAndGetUp 2.11, ground 2.76. Hand error sits at 5-9 cm
+regardless of motion type, which is the arm-length gap rather than a per-motion
+failure.
+
+1·2단계는 끝났습니다. LAFAN1 77개 시퀀스를 모두 G1으로 리타게팅했고, NaN 없음,
+관절 한계 위반 없음, 원본 BVH와 프레임 수 일치를 전수 확인했습니다. 3단계가
+진행 중입니다. 496,672 프레임 전체에 대해 시퀀스별 IK 목표 추적 오차를 측정했고,
+그 결과로 정책 학습에 쓸 시퀀스를 고르고 있습니다. 4단계는 시작 전입니다.
+
+동작 종류별 발 추적 오차는 걷기 1.00 cm, 춤 1.25, 달리기 1.33, 장애물 1.65,
+넘어졌다 일어나기 2.11, 바닥 동작 2.76입니다. 손 오차는 동작 종류와 무관하게
+5~9 cm인데, 이는 개별 동작의 실패가 아니라 팔 길이 차이에서 오는 값입니다.
