@@ -1,0 +1,22 @@
+# 정책 학습에 쓸 시퀀스. outputs/metrics/quality.csv에서 골랐다.
+# 기준: 발 추적 오차 평균 < 1.2 cm, p95 < 3.5 cm, 최대 < 10 cm.
+# 세 조건을 모두 만족하는 것이 77개 중 19개다.
+aiming1_subject1
+dance2_subject3
+jumps1_subject1
+obstacles1_subject1
+obstacles2_subject1
+obstacles3_subject3
+obstacles4_subject2
+run2_subject4
+walk1_subject1
+walk1_subject2
+walk1_subject5
+walk2_subject1
+walk2_subject3
+walk2_subject4
+walk3_subject1
+walk3_subject2
+walk3_subject4
+walk3_subject5
+walk4_subject1

@@ -177,7 +177,9 @@ Stages 1 and 2 are done. All 77 LAFAN1 sequences are retargeted to the G1 and
 verified: no NaNs, no joint-limit violations, frame counts matching the source
 BVH exactly. Stage 3 is in progress — per-sequence IK target error has been
 measured across all 496,672 frames, and the sequences to carry into policy
-training are being selected from it. Stage 4 has not started.
+training have been selected from it: 19 sequences clear a foot error under
+1.2 cm mean, 3.5 cm p95 and 10 cm max. Stage 4 has started — BeyondMimic
+motion tracking policies, one per sequence.
 
 Foot tracking error by motion type: walk 1.00 cm, dance 1.25, run 1.33,
 obstacles 1.65, fallAndGetUp 2.11, ground 2.76. Hand error sits at 5-9 cm
@@ -187,7 +189,9 @@ failure.
 1·2단계는 끝났습니다. LAFAN1 77개 시퀀스를 모두 G1으로 리타게팅했고, NaN 없음,
 관절 한계 위반 없음, 원본 BVH와 프레임 수 일치를 전수 확인했습니다. 3단계가
 진행 중입니다. 496,672 프레임 전체에 대해 시퀀스별 IK 목표 추적 오차를 측정했고,
-그 결과로 정책 학습에 쓸 시퀀스를 고르고 있습니다. 4단계는 시작 전입니다.
+그 결과로 정책 학습에 쓸 시퀀스를 골랐습니다. 발 추적 오차가 평균 1.2 cm,
+p95 3.5 cm, 최대 10 cm를 모두 밑도는 19개입니다. 4단계를 시작했습니다.
+BeyondMimic으로 시퀀스마다 정책을 하나씩 학습시킵니다.
 
 동작 종류별 발 추적 오차는 걷기 1.00 cm, 춤 1.25, 달리기 1.33, 장애물 1.65,
 넘어졌다 일어나기 2.11, 바닥 동작 2.76입니다. 손 오차는 동작 종류와 무관하게
