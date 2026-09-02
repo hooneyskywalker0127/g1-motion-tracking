@@ -12,11 +12,13 @@ Simulation only. Real-robot deployment is out of scope for now.
 
 ## Pipeline
 
-```
-  human mocap        retargeting        reference motion       RL training
- (사람 모캡 데이터)  →  (리타게팅)     →   (레퍼런스 모션)    →   (강화학습)
-   joint positions     G1 joint angles     target trajectory     tracking policy
-```
+![pipeline](docs/pipeline.png)
+
+Stages 1 to 3 carry no physics: they compute poses and decide which ones are
+worth keeping. Physics enters at stage 4, where the robot has to hold itself up.
+
+1~3단계에는 물리가 없습니다. 자세를 계산하고 그중 쓸 것을 고르는 구간입니다.
+물리는 4단계에서 들어오고, 거기서부터 로봇이 스스로 버텨야 합니다.
 
 ### 1. Human mocap — 사람 모션 캡처 데이터
 
@@ -26,6 +28,10 @@ as numbers rather than video.
 사람 몸의 관절이 매 순간 어디에 있었는지를 숫자로 기록한 데이터입니다.
 영상이 아니라 "0.1초 시점에 왼쪽 무릎은 여기, 오른쪽 팔꿈치는 여기" 같은
 좌표의 나열입니다.
+
+Done: LAFAN1, 77 BVH sequences at 30 fps, five subjects, 4.6 hours.
+
+진행 상황: LAFAN1 77개 시퀀스를 확보했습니다. 30 fps bvh, 배우 5명, 4.6시간입니다.
 
 ### 2. Retargeting — 리타게팅
 
@@ -40,6 +46,29 @@ respecting the robot's joint limits and keeping the feet on the ground.
 것을 정해 두고 그것을 최대한 만족하는 로봇 관절값을 최적화로 찾습니다.
 로봇의 관절 한계를 넘지 않아야 하고, 발이 바닥을 뚫거나 뜨지 않아야 합니다.
 
+![retargeting](docs/retargeting.gif)
+
+Orange is the source human skeleton straight out of the mocap file; grey is the
+retargeted G1. The bands carry the segment lengths that make this hard and the
+distance between each tracked body and the target the IK was solving for. The
+robot is not walking here — each frame's joint angles are written straight into
+the model and rendered. No simulation step runs.
+
+주황색이 원본 사람 골격, 회색이 리타게팅된 G1입니다. 위아래 띠에 이 작업을
+어렵게 만드는 팔다리 길이 차이와, 로봇의 각 부위가 IK 목표에서 몇 cm
+떨어졌는지를 같이 넣었습니다. 이 영상에서 로봇이 걷고 있는 것은 아닙니다.
+매 프레임 관절값을 모델에 직접 써넣고 그린 것이고, 시뮬레이션 스텝은
+한 번도 돌지 않았습니다.
+
+Done: all 77 sequences retargeted with
+[GMR](https://github.com/YanjieZe/GMR), 496,672 frames. Verified across every
+frame: no NaNs or infinities, no joint-limit violations on any of the 29 joints,
+frame counts matching the source BVH exactly.
+
+진행 상황: GMR로 77개 전부 리타게팅했습니다. 총 496,672 프레임입니다.
+전수 검증했습니다. NaN이나 무한대 없음, 29개 관절 어디에도 한계 위반 없음,
+프레임 수는 원본 bvh와 정확히 일치합니다.
+
 ### 3. Reference motion — 레퍼런스 모션
 
 The retargeted trajectory becomes the target the robot is asked to follow.
@@ -48,6 +77,59 @@ At this point nothing is physically simulated yet — only the goal exists.
 리타게팅 결과가 로봇이 따라가야 할 목표 궤적이 됩니다. 이 단계까지는
 아직 로봇이 실제로 움직인 것이 아니라, 따라야 할 정답 동작만 만들어진
 상태입니다.
+
+Not every retargeted sequence is worth training on. The measure used here is how
+far each tracked body ends up from the target GMR's IK was solving for. Only
+pelvis, ankles and wrists are read: torso, shoulder and hip carry position
+weights of 0 to 5, and their MuJoCo body origins do not coincide with the human
+joint centres, so the constant offset there is not error.
+
+리타게팅했다고 다 학습에 쓸 수 있는 것은 아닙니다. 여기서 쓰는 척도는 로봇의
+각 부위가 GMR의 IK가 겨냥한 목표에서 몇 cm 떨어졌는지입니다. 골반과 양 발목,
+양 손목만 봅니다. 몸통과 어깨, 고관절은 위치 가중치가 0~5라 GMR이 위치를
+맞추지 않고, MuJoCo 바디 원점이 사람 관절 중심과 달라 상수 오프셋이 섞입니다.
+
+Foot error by motion type, in cm:
+
+동작 종류별 발 오차입니다. 단위는 cm입니다.
+
+```
+walk         12개  1.00      obstacles      17개  1.65
+dance         8개  1.25      sprint          2개  1.67
+aiming        5개  1.27      fallAndGetUp    6개  2.11
+run           4개  1.33      ground          5개  2.76
+```
+
+Walking is cleanest and floor work is worst, by a factor of three. Falling and
+lying down put contact on parts other than the feet, which is not what an
+ankle-weighted IK is set up for. Hand error stays at 5-9 cm regardless of motion
+type — that is the arm-length gap, not a per-motion failure, so it is not used
+to filter.
+
+걷기가 가장 깨끗하고 바닥 동작이 가장 나쁩니다. 세 배 차이입니다. 넘어지고
+눕는 동작은 발 말고도 닿는 부위가 많은데, 발에 가중치를 둔 IK는 그런 상황을
+상정하지 않습니다. 손 오차는 동작 종류와 무관하게 5~9 cm입니다. 개별 동작의
+실패가 아니라 팔 길이 차이라서 선별 기준으로는 쓰지 않습니다.
+
+Done: 19 sequences clear all three foot thresholds — mean under 1.2 cm, p95
+under 3.5 cm, max under 10 cm. The list is in
+[`configs/selected_motions.txt`](configs/selected_motions.txt). Each was
+converted to the 50 fps npz BeyondMimic reads, which adds the link velocities
+the policy needs, and uploaded to a W&B registry.
+
+진행 상황: 발 오차 세 조건을 모두 만족하는 19개를 골랐습니다. 평균 1.2 cm
+미만, p95 3.5 cm 미만, 최대 10 cm 미만입니다. 목록은
+[`configs/selected_motions.txt`](configs/selected_motions.txt)에 있습니다.
+각각을 BeyondMimic이 읽는 50 fps npz로 변환했습니다. 이 변환이 정책 학습에
+필요한 링크 속도를 만들어냅니다. 변환 결과는 W&B registry에 올렸습니다.
+
+The thresholds are not principled. They were picked because they leave 19
+sequences, close to the 21 the GMR paper trained on. Once training shows which
+sequences fail and where their error sits, the cut can be argued for.
+
+문턱값 자체는 원칙에서 나온 것이 아닙니다. 19개가 남는 지점을 골랐고, GMR
+논문이 21개로 실험한 것과 비슷한 규모라는 게 근거입니다. 학습을 돌려 실패하는
+시퀀스가 어느 오차대에 몰리는지 보면 그때는 근거 있는 문턱을 정할 수 있습니다.
 
 ### 4. Motion tracking policy — 모션 트래킹 정책 학습
 
@@ -62,16 +144,64 @@ accuracy, not by whether the walk merely looks plausible.
 평가 기준은 "그럴듯하게 걷는가"가 아니라 "레퍼런스를 얼마나 정확히
 따라갔는가"입니다.
 
+Training uses [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking),
+the same framework the GMR paper used. It trains one policy per motion, so the
+19 sequences mean 19 training runs. 4096 environments, 30000 iterations, PPO.
+
+학습에는 [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking)을
+씁니다. GMR 논문이 정책 학습에 쓴 것과 같습니다. 모션 하나당 정책 하나를
+학습하므로 19개 시퀀스는 학습 19회를 뜻합니다. 환경 4096개, 30000회 반복, PPO입니다.
+
+That repository targets IsaacSim 4.5 and IsaacLab 2.1.0. Running it against the
+local IsaacSim 5.1 / IsaacLab 2.3.2 / rsl-rl 3.1.2 needed three interface
+fixes, none of which touch the learning itself: `csv_to_npz.py` never leaves its
+`while simulation_app.is_running()` loop after saving, which does not end under
+`--headless`; `isaaclab.utils.io` no longer exports `dump_pickle`; and rsl-rl 3.x
+moved the observation normalizer off the runner and into the policy.
+
+그 저장소는 IsaacSim 4.5, IsaacLab 2.1.0 기준입니다. 로컬의 IsaacSim 5.1,
+IsaacLab 2.3.2, rsl-rl 3.1.2에서 돌리려면 인터페이스 세 곳을 고쳐야 합니다.
+학습 로직과는 무관합니다. `csv_to_npz.py`가 저장 뒤에도
+`while simulation_app.is_running()` 루프를 빠져나오지 않아 `--headless`에서
+끝나지 않는 것, `isaaclab.utils.io`에서 `dump_pickle`이 사라진 것, rsl-rl 3.x가
+정규화기를 러너에서 정책 안으로 옮긴 것입니다.
+
+In progress: the first policy is training. What the 19 runs are for is the table
+below — success rate against foot error, to see whether retargeting quality
+predicts whether the policy holds.
+
+진행 중: 첫 정책을 학습하고 있습니다. 19회를 돌리는 목적은 아래 표를 채우는
+것입니다. 발 오차와 성공률을 나란히 놓고, 리타게팅 품질이 정책이 버티는지를
+예측하는지 봅니다.
+
+```
+시퀀스                발 오차    성공률
+walk2_subject4         0.70        ?
+aiming1_subject1       0.74        ?
+...
+obstacles4_subject2    1.19        ?
+```
+
 ---
 
 ## Layout
 
 ```
-src/       retargeting and training code   리타게팅·학습 코드
-configs/   robot / dataset / training      로봇·데이터셋·학습 설정
-outputs/   motions, logs, videos           생성 결과 (gitignored)
-data ->    symlink to local dataset root   데이터 심볼릭 링크 (gitignored)
+src/       retargeting, metrics, rendering  리타게팅·지표·렌더 코드
+scripts/   batch drivers                    배치 실행 스크립트
+configs/   selection and training order     선별 목록·학습 순서
+docs/      figures used in this README      이 문서에 쓰는 그림
+outputs/   motions, metrics, logs, videos   생성 결과 (gitignored)
+data ->    symlink to local dataset root    데이터 심볼릭 링크 (gitignored)
 ```
+
+| script | 하는 일 |
+| --- | --- |
+| `scripts/retarget_all.sh` | LAFAN1 77개를 G1으로 리타게팅 |
+| `scripts/quality_all.sh` | 시퀀스별 IK 목표 추적 오차 측정 |
+| `scripts/render_compare.sh` | 사람 골격과 로봇을 한 영상에 렌더 |
+| `scripts/npz_all.sh` | 선별한 시퀀스를 npz로 변환해 registry에 업로드 |
+| `scripts/train_chain.sh` | 시퀀스를 순서대로 하나씩 학습 |
 
 ## Data
 
@@ -173,26 +303,16 @@ Motion Retargeting for Humanoid Motion Tracking(arXiv:2510.02252)입니다. 리�
 
 ## Status
 
-Stages 1 and 2 are done. All 77 LAFAN1 sequences are retargeted to the G1 and
-verified: no NaNs, no joint-limit violations, frame counts matching the source
-BVH exactly. Stage 3 is in progress — per-sequence IK target error has been
-measured across all 496,672 frames, and the sequences to carry into policy
-training have been selected from it: 19 sequences clear a foot error under
-1.2 cm mean, 3.5 cm p95 and 10 cm max. Stage 4 has started — BeyondMimic
-motion tracking policies, one per sequence.
+Stages 1 to 3 are done. Stage 4 is running: the first policy is training, with
+the remaining 18 sequences queued behind it. Per-stage detail is above.
 
-Foot tracking error by motion type: walk 1.00 cm, dance 1.25, run 1.33,
-obstacles 1.65, fallAndGetUp 2.11, ground 2.76. Hand error sits at 5-9 cm
-regardless of motion type, which is the arm-length gap rather than a per-motion
-failure.
+1~3단계는 끝났습니다. 4단계가 진행 중이고, 첫 정책을 학습하면서 나머지 18개
+시퀀스가 순서를 기다리고 있습니다. 단계별 상세는 위에 적었습니다.
 
-1·2단계는 끝났습니다. LAFAN1 77개 시퀀스를 모두 G1으로 리타게팅했고, NaN 없음,
-관절 한계 위반 없음, 원본 BVH와 프레임 수 일치를 전수 확인했습니다. 3단계가
-진행 중입니다. 496,672 프레임 전체에 대해 시퀀스별 IK 목표 추적 오차를 측정했고,
-그 결과로 정책 학습에 쓸 시퀀스를 골랐습니다. 발 추적 오차가 평균 1.2 cm,
-p95 3.5 cm, 최대 10 cm를 모두 밑도는 19개입니다. 4단계를 시작했습니다.
-BeyondMimic으로 시퀀스마다 정책을 하나씩 학습시킵니다.
+Not done yet: an evaluation script. The repository ships `train.py` and
+`play.py` but nothing that counts whether a policy carries a reference to the
+end, so success rate has to be defined and measured here.
 
-동작 종류별 발 추적 오차는 걷기 1.00 cm, 춤 1.25, 달리기 1.33, 장애물 1.65,
-넘어졌다 일어나기 2.11, 바닥 동작 2.76입니다. 손 오차는 동작 종류와 무관하게
-5~9 cm인데, 이는 개별 동작의 실패가 아니라 팔 길이 차이에서 오는 값입니다.
+아직 안 된 것: 평가 스크립트입니다. BeyondMimic 저장소에는 `train.py`와
+`play.py`만 있고, 정책이 참조를 끝까지 완주하는지 세는 코드는 없습니다.
+성공률은 여기서 정의하고 재야 합니다.
