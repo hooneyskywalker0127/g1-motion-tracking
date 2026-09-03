@@ -185,6 +185,15 @@ on an RTX 5080.
 
 ![tracking](docs/tracking.gif)
 
+The gif above is six seconds of it. The whole sequence runs 3 minutes 58
+seconds.
+
+### ▶ 전체 영상 (YouTube)
+
+[![전체 영상 재생](docs/youtube_thumb.jpg)](https://youtu.be/l1M4y_Nl7oc)
+
+위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/l1M4y_Nl7oc
+
 Left is the trained policy stepping through physics, right is the reference it
 was asked to follow. Both panels are Isaac Sim under the same lighting and
 camera, start from the same motion frame, and run the full 11,909 frame
