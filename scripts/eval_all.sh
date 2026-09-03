@@ -13,23 +13,38 @@ EXTRA=${2:-}
 OUTDIR="$REPO/outputs/eval"
 mkdir -p "$OUTDIR"
 
-# 학습 로그 폴더 이름은 <날짜>_<시퀀스> 형식이다. 같은 시퀀스가 여러 번 학습됐으면
-# 가장 최근 것을 쓴다.
-for run in $(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*/ | sort); do
+# 학습 로그 폴더는 <날짜>_<시각>_<시퀀스> 형식이다. 같은 시퀀스를 여러 번 돌렸으면
+# 이름순 뒤쪽이 최신이므로 나중 것이 앞의 것을 덮어쓰게 둔다.
+declare -A RUN_OF
+for run in $(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*/ 2>/dev/null | sort); do
   name=$(basename "$run")
-  seq=${name#*_*_}
-  ckpt=$(ls -1 "$run"/model_*.pt 2>/dev/null | sed 's/.*model_//;s/\.pt//' | sort -n | tail -1)
-  [ -z "$ckpt" ] && { echo "건너뜀: $name 체크포인트 없음"; continue; }
-  [ -f "$MOTIONS/$seq.npz" ] || { echo "건너뜀: $seq npz 없음"; continue; }
+  RUN_OF[${name#*_*_}]=$name
+done
+
+for seq in "${!RUN_OF[@]}"; do
+  name=${RUN_OF[$seq]}
+  run="$WBT/logs/rsl_rl/g1_flat/$name"
 
   out="$OUTDIR/$seq.json"
   [ -f "$out" ] && { echo "건너뜀: $seq 이미 평가됨"; continue; }
+
+  ckpt=$(ls -1 "$run"/model_*.pt 2>/dev/null | sed 's/.*model_//;s/\.pt//' | sort -n | tail -1)
+  # 30000회를 다 돌지 못한 학습은 아직 평가 대상이 아니다.
+  if [ -z "$ckpt" ] || [ "$ckpt" -lt 29999 ]; then
+    echo "건너뜀: $seq 학습 미완료 (최종 체크포인트 ${ckpt:-없음})"
+    continue
+  fi
+
+  # npz는 손으로 복사해 둔 것이 있으면 그것을, 없으면 학습 때 받아 둔 artifact를 쓴다.
+  motion="$MOTIONS/$seq.npz"
+  [ -f "$motion" ] || motion="$WBT/artifacts/$seq:v0/motion.npz"
+  [ -f "$motion" ] || { echo "건너뜀: $seq npz 없음"; continue; }
 
   echo "=== $seq · model_$ckpt.pt · 환경 $NUM_ENVS $(date +%F\ %H:%M:%S) ==="
   (cd "$WBT" && OMP_NUM_THREADS=1 "$PY" scripts/rsl_rl/eval.py \
       --task=Tracking-Flat-G1-v0 --num_envs "$NUM_ENVS" \
       --load_run="$name" --checkpoint="model_$ckpt.pt" \
-      --motion_file="$MOTIONS/$seq.npz" \
+      --motion_file="$motion" \
       --out "$out" $EXTRA) 2>&1 | grep -E "\[RESULT\]|\[INFO\]: Wrote|Error"
 done
 echo "평가 완료 $(date +%F\ %H:%M:%S)"
