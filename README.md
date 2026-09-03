@@ -194,6 +194,24 @@ seconds.
 
 위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/l1M4y_Nl7oc
 
+### ▶ 학습 경과 (YouTube)
+
+[![학습 경과 재생](docs/youtube_thumb_progression.jpg)](https://youtu.be/qQw8PtmXV9s)
+
+위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/qQw8PtmXV9s
+
+Five checkpoints of the same run and the reference, played at once on the same
+motion, the same start frame and the same camera. Mean reward runs 14.67 at
+1,000 iterations, 30.80 at 5,000, 33.49 at 10,000, 36.63 at 20,000 and 36.80 at
+30,000, so most of the gain lands early and the later checkpoints separate on
+how long they hold rather than on the number.
+
+같은 학습의 체크포인트 다섯 개와 레퍼런스를 한 화면에 놓은 것입니다. 모션과
+시작 프레임, 카메라가 모두 같습니다. 평균 보상은 1,000회에서 14.67,
+5,000회 30.80, 10,000회 33.49, 20,000회 36.63, 30,000회 36.80입니다. 상승분
+대부분이 앞쪽에서 나오고, 뒤로 갈수록 숫자보다 얼마나 오래 버티는지에서
+갈립니다.
+
 Left is the trained policy stepping through physics, right is the reference it
 was asked to follow. Both panels are Isaac Sim under the same lighting and
 camera, start from the same motion frame, and run the full 11,909 frame
