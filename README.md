@@ -188,13 +188,15 @@ on an RTX 5080.
 Left is the trained policy stepping through physics, right is the reference it
 was asked to follow. Both panels are Isaac Sim under the same lighting and
 camera, start from the same motion frame, and run the full 11,909 frame
-sequence. They never match pixel for pixel: the initial pose is randomised at
+sequence. The clip above is that whole sequence at 8x speed; at real time it
+runs 3 minutes 58 seconds. They never match pixel for pixel: the initial pose is randomised at
 every reset, and the left robot has to hold itself up while the right one is
 posed frame by frame.
 
 왼쪽이 물리 위에서 도는 학습된 정책, 오른쪽이 따라가야 할 레퍼런스입니다.
 두 화면 모두 Isaac Sim이고 조명과 카메라가 같으며, 같은 모션 프레임에서
-시작해 11,909 프레임 전체를 돌립니다. 두 화면이 픽셀 단위로 겹치지는
+시작해 11,909 프레임 전체를 돌립니다. 위 이미지는 그 전체를 8배속으로
+줄인 것이고, 실제 길이는 3분 58초입니다. 두 화면이 픽셀 단위로 겹치지는
 않습니다. 리셋마다 초기 자세에 랜덤이 들어가고, 왼쪽 로봇은 스스로 버텨야
 하는 반면 오른쪽은 프레임마다 자세를 써넣은 것이기 때문입니다.
 
