@@ -166,17 +166,70 @@ IsaacLab 2.3.2, rsl-rl 3.1.2에서 돌리려면 인터페이스 세 곳을 고�
 끝나지 않는 것, `isaaclab.utils.io`에서 `dump_pickle`이 사라진 것, rsl-rl 3.x가
 정규화기를 러너에서 정책 안으로 옮긴 것입니다.
 
-In progress: the first policy is training. What the 19 runs are for is the table
-below — success rate against foot error, to see whether retargeting quality
-predicts whether the policy holds.
+Playing a trained policy back needs two more fixes in the same file,
+`scripts/rsl_rl/play.py`. `--motion_file` is only read on the W&B branch, so a
+local checkpoint starts with no reference motion, and `get_observations()` now
+returns a TensorDict that the existing tuple unpacking splits along the batch
+dimension, leaving a one-dimensional observation.
 
-진행 중: 첫 정책을 학습하고 있습니다. 19회를 돌리는 목적은 아래 표를 채우는
-것입니다. 발 오차와 성공률을 나란히 놓고, 리타게팅 품질이 정책이 버티는지를
-예측하는지 봅니다.
+학습한 정책을 재생하려면 같은 저장소의 `scripts/rsl_rl/play.py`에서 두 곳을
+더 고쳐야 합니다. `--motion_file`이 W&B 분기에서만 읽혀 로컬 체크포인트로
+돌리면 레퍼런스 모션이 비고, `get_observations()`가 반환하는 TensorDict를
+기존 튜플 언패킹이 배치 차원으로 쪼개 관측이 1차원이 됩니다.
+
+Done: the first policy, walk2_subject4, trained to 30000 iterations in 8 h 38 m
+on an RTX 5080.
+
+진행 상황: 첫 정책 walk2_subject4를 30000회까지 학습했습니다. RTX 5080에서
+8시간 38분 걸렸습니다.
+
+![tracking](docs/tracking.gif)
+
+Left is the trained policy stepping through physics, right is the reference it
+was asked to follow. Both panels are Isaac Sim under the same lighting and
+camera, start from the same motion frame, and run the full 11,909 frame
+sequence. They never match pixel for pixel: the initial pose is randomised at
+every reset, and the left robot has to hold itself up while the right one is
+posed frame by frame.
+
+왼쪽이 물리 위에서 도는 학습된 정책, 오른쪽이 따라가야 할 레퍼런스입니다.
+두 화면 모두 Isaac Sim이고 조명과 카메라가 같으며, 같은 모션 프레임에서
+시작해 11,909 프레임 전체를 돌립니다. 두 화면이 픽셀 단위로 겹치지는
+않습니다. 리셋마다 초기 자세에 랜덤이 들어가고, 왼쪽 로봇은 스스로 버텨야
+하는 반면 오른쪽은 프레임마다 자세를 써넣은 것이기 때문입니다.
+
+Where it ended up, averaged over 4096 environments at iteration 30000:
+
+30000회 시점, 환경 4096개 평균입니다.
+
+```
+링크 위치 오차     4.8 cm     추종 대상 링크 오차의 평균
+관절 위치 오차     0.66 rad   29개 관절 차이의 L2 노름
+앵커 위치 오차     16.8 cm    앵커 링크의 전역 위치 오차
+시간 만료 종료     98.8 %     에피소드가 추종 실패 없이 끝난 비율
+평균 보상          36.80
+```
+
+An episode is cut short when the anchor or an end-effector drifts past its
+threshold, so 98.8 % is how often the policy carried a 10 s episode to the end
+without that happening. It is measured on the motion it was trained on and is
+not the same quantity as the published per-sequence success rates, which the
+table below is still waiting on.
+
+앵커나 말단 링크가 문턱을 넘으면 에피소드가 중간에 끊깁니다. 따라서 98.8%는
+정책이 10초 에피소드를 끝까지 끌고 간 비율입니다. 학습에 쓴 그 모션에서 잰
+값이고, 선행 연구가 공개한 시퀀스별 성공률과 같은 양이 아닙니다. 아래 표는
+그 값을 기다리고 있습니다.
+
+What the 19 runs are for is the table below — success rate against foot error,
+to see whether retargeting quality predicts whether the policy holds.
+
+19회를 돌리는 목적은 아래 표를 채우는 것입니다. 발 오차와 성공률을 나란히
+놓고, 리타게팅 품질이 정책이 버티는지를 예측하는지 봅니다.
 
 ```
 시퀀스                발 오차    성공률
-walk2_subject4         0.70        ?
+walk2_subject4         0.70        ?   학습 완료, 성공률은 기준 확정 후
 aiming1_subject1       0.74        ?
 ...
 obstacles4_subject2    1.19        ?
@@ -202,6 +255,7 @@ data ->    symlink to local dataset root    데이터 심볼릭 링크 (gitignor
 | `scripts/render_compare.sh` | 사람 골격과 로봇을 한 영상에 렌더 |
 | `scripts/npz_all.sh` | 선별한 시퀀스를 npz로 변환해 registry에 업로드 |
 | `scripts/train_chain.sh` | 시퀀스를 순서대로 하나씩 학습 |
+| `scripts/render_tracking.sh` | 학습된 정책과 레퍼런스를 좌우로 렌더해 합성 |
 
 ## Data
 
