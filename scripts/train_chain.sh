@@ -18,6 +18,11 @@ while pgrep -f "rsl_rl/train.py" > /dev/null; do sleep 60; done
 
 for seq in $(cat "$REPO/configs/train_order.txt"); do
   [ -f /tmp/stop_train_chain ] && { echo "중지 요청 확인, 종료 $(date +%F\ %H:%M:%S)"; break; }
+  # 이미 30,000까지 끝난 시퀀스는 건너뛴다 (model_29999.pt 존재 여부로 판정).
+  if ls "$WBT"/logs/rsl_rl/g1_flat/*_"$seq"*/model_29999.pt >/dev/null 2>&1; then
+    echo "=== $seq 이미 완료, 건너뜀 ==="
+    continue
+  fi
   echo "=== $seq 학습 시작 $(date +%F\ %H:%M:%S) ==="
   start=$SECONDS
   (cd "$WBT" && "$PY" scripts/rsl_rl/train.py \

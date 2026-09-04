@@ -18,7 +18,8 @@ mkdir -p "$OUTDIR"
 declare -A RUN_OF
 for run in $(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*/ 2>/dev/null | sort); do
   name=$(basename "$run")
-  RUN_OF[${name#*_*_}]=$name
+  seq=${name#*_*_}; seq=${seq%_resume}
+  RUN_OF[$seq]=$name
 done
 
 for seq in "${!RUN_OF[@]}"; do
