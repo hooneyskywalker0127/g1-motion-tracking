@@ -35,12 +35,22 @@ export OMP_NUM_THREADS=1
 for ck in 1000 5000 10000 20000; do
   out="$WORK/iter_$(printf %05d $ck).mp4"
   [ -f "$out" ] && { echo "건너뜀: $ck 이미 렌더됨"; continue; }
-  echo "=== $SEQ · model_$ck.pt $(date +%H:%M:%S) ==="
+  # 재개한 학습은 체크포인트가 여러 폴더에 흩어진다. 예를 들어 walk4_subject1은
+  # 1,000~20,000이 첫 폴더에, 29,999가 _resume2 폴더에 있다. 그래서 가장 최근
+  # 폴더 하나만 보면 앞쪽 체크포인트를 못 찾는다. 실제로 있는 폴더를 고른다.
+  RUN_CK=$(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*_"$SEQ"*/ 2>/dev/null |
+           while read -r d; do [ -f "$d/model_$ck.pt" ] && echo "$d"; done | sort | tail -1)
+  if [ -z "$RUN_CK" ]; then
+    echo "건너뜀: model_$ck.pt 를 어느 폴더에서도 못 찾음"
+    continue
+  fi
+  RUN_CK=$(basename "$RUN_CK")
+  echo "=== $SEQ · $RUN_CK · model_$ck.pt $(date +%H:%M:%S) ==="
   "$PY" scripts/rsl_rl/play.py \
     --task=Tracking-Flat-G1-v0 --num_envs=1 \
     --headless --video --video_length "$FRAMES" \
     --video_out "$out" \
-    --load_run="$RUN" --checkpoint="model_$ck.pt" \
+    --load_run="$RUN_CK" --checkpoint="model_$ck.pt" \
     --motion_file="$MOTION" --start_frame=0 --no_randomization \
     env.episode_length_s="$EPLEN" env.scene.contact_forces.debug_vis=false \
     env.commands.motion.debug_vis=false
