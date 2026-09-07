@@ -8,11 +8,9 @@ dance2_subject3
 walk3_subject2
 walk3_subject1
 walk1_subject2
-obstacles1_subject1
 jumps1_subject1
 walk3_subject5
 run2_subject4
 walk1_subject5
 walk2_subject3
 obstacles3_subject3
-obstacles4_subject2
