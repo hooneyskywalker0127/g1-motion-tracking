@@ -135,6 +135,28 @@ motion, the same start frame and the same camera. Mean reward runs 14.67 at
 30,000, so most of the gain lands early and the later checkpoints separate on
 how long they hold rather than on the number.
 
+### ▶ Domain randomization (YouTube)
+
+[![Play the domain randomization clip](docs/youtube_thumb_randomization.jpg)](https://youtu.be/d61rKk675qY)
+
+Click the image above to play it on YouTube — https://youtu.be/d61rKk675qY
+
+![randomization](docs/randomization.gif)
+
+Six seconds out of it. On the left is the policy running with domain
+randomization on, on the right is the reference. A random push lands every 1-3
+seconds, and friction, torso centre of mass, joint offsets and the reset pose
+are randomized as well.
+
+A push only adds to the torso velocity, so nothing about it is visible on
+screen. The moment the value goes in, the contact point is marked, an arrow is
+drawn along the push direction, and the added speed is written next to it. The
+arrow stays for one second.
+
+With randomization on, the policy can drift off the reference or the episode can
+end early. It then restarts from frame 0, so the two sides fall out of phase.
+That is part of the result too.
+
 ### Evaluation criteria
 
 Policies are measured the way the GMR paper
