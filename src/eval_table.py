@@ -40,14 +40,32 @@ def main(eval_dir, quality_csv, out_path):
             " E_mpjpe (rad) | 롤아웃 |")
     sep = "| --- | --- | --- | --- | --- | --- | --- |"
     lines = [head, sep]
+    notes = []
     for d in rows:
         feet = quality.get(d["motion"])
         feet_s = f"{feet:.2f}" if feet is not None else "-"
+        # 세 지표는 완주한 롤아웃에서만 정의된다. 완주가 없으면 NaN이라 그대로
+        # 쓰면 "nan"이 찍힌다. 칸은 비우고 실제로 잰 값은 표 아래에 적는다.
+        finished = d["success_rate"] > 0 and d["e_g_mpbpe_mm"] == d["e_g_mpbpe_mm"]
+        if finished:
+            errs = (f" {d['e_g_mpbpe_mm']:.0f} | {d['e_mpbpe_mm']:.0f} |"
+                    f" {d['e_mpjpe_rad']:.3f} |")
+        else:
+            errs = " - | - | - |"
+            alive = d.get("mean_alive_frames", 0.0)
+            total = d.get("motion_frames", 0) or 1
+            notes.append(
+                f"- {d['motion']}: 완주한 롤아웃이 없어 세 지표가 정의되지 않는다."
+                f" 평균 추적 길이 {alive / total * 100:.0f}%"
+                f" ({alive:,.0f}/{total:,} 프레임),"
+                f" 전체 롤아웃 E_g-mpbpe {d.get('e_g_mpbpe_mm_all', float('nan')):.0f} mm"
+            )
         lines.append(
             f"| {d['motion']} | {feet_s} | {d['success_rate'] * 100:.0f}% |"
-            f" {d['e_g_mpbpe_mm']:.0f} | {d['e_mpbpe_mm']:.0f} |"
-            f" {d['e_mpjpe_rad']:.3f} | {d['num_envs']}{'·dr' if d['randomized'] else ''} |"
+            f"{errs} {d['num_envs']}{'·dr' if d['randomized'] else ''} |"
         )
+    if notes:
+        lines += [""] + notes
     table = "\n".join(lines)
     print(table)
     if out_path:
