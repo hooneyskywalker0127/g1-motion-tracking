@@ -6,6 +6,8 @@ Simulation only. Real-robot deployment is out of scope for now.
 
 한국어 문서는 [README.md](README.md)를 참고하십시오.
 
+Trained policies and evaluation results: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
+
 ---
 
 ## Pipeline

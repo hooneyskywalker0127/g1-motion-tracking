@@ -7,6 +7,8 @@
 
 English documentation: [README.en.md](README.en.md)
 
+학습된 정책과 평가 결과: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
+
 ---
 
 ## 파이프라인
