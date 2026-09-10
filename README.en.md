@@ -177,15 +177,45 @@ side by side.
 randomization is off by default and `--randomize` turns it on, matching the way
 the paper separates its sim and sim-dr conditions.
 
-What the 19 runs are for is the table below — completion rate against foot
-error, to see whether retargeting quality predicts whether the policy holds.
+17 of the 19 selected sequences were trained to 30,000 iterations and
+evaluated over 100 rollouts. Completion rate sits next to foot error, to see
+whether retargeting quality predicts whether the policy holds.
 
 | sequence | foot error (cm) | completion | E_g-mpbpe (mm) | E_mpbpe (mm) | E_mpjpe (rad) |
 | --- | --- | --- | --- | --- | --- |
-| walk2_subject4 | 0.70 | measuring | | | |
-| aiming1_subject1 | 0.74 | training | | | |
-| ... | | | | | |
-| obstacles4_subject2 | 1.19 | queued | | | |
+| walk2_subject4 | 0.70 | 99% | 90 | 40 | 0.085 |
+| aiming1_subject1 | 0.74 | 100% | 89 | 35 | 0.080 |
+| walk1_subject1 | 0.80 | 99% | 80 | 34 | 0.066 |
+| walk4_subject1 | 0.88 | 100% | 60 | 37 | 0.062 |
+| walk3_subject4 | 0.88 | 0% | - | - | - |
+| walk2_subject1 | 0.91 | 100% | 114 | 43 | 0.101 |
+| obstacles2_subject1 | 0.93 | 0% | - | - | - |
+| dance2_subject3 | 0.94 | 100% | 103 | 45 | 0.104 |
+| walk3_subject2 | 0.99 | 100% | 79 | 34 | 0.071 |
+| walk3_subject1 | 1.01 | 0% | - | - | - |
+| walk1_subject2 | 1.05 | 100% | 79 | 34 | 0.066 |
+| obstacles1_subject1 | 1.07 | not trained | | | |
+| jumps1_subject1 | 1.10 | 98% | 151 | 42 | 0.104 |
+| walk3_subject5 | 1.11 | 100% | 85 | 36 | 0.082 |
+| run2_subject4 | 1.12 | 99% | 178 | 47 | 0.111 |
+| walk1_subject5 | 1.12 | 100% | 90 | 34 | 0.069 |
+| walk2_subject3 | 1.15 | 96% | 129 | 50 | 0.104 |
+| obstacles3_subject3 | 1.19 | 98% | 162 | 54 | 0.101 |
+| obstacles4_subject2 | 1.19 | not trained | | | |
+
+The three sequences at 0% have no completed rollout, so the three metrics are
+undefined. Mean tracked length and E_g-mpbpe over all rollouts instead:
+
+| sequence | mean tracked length | E_g-mpbpe over all rollouts (mm) |
+| --- | --- | --- |
+| walk3_subject4 | 88% (10,862 / 12,330 frames) | 116 |
+| walk3_subject1 | 78% (9,606 / 12,330 frames) | 112 |
+| obstacles2_subject1 | 18% (2,144 / 12,204 frames) | 368 |
+
+Foot error ranking did not predict policy performance. The three sequences at
+0% sit mid-range at 0.88, 0.93 and 1.01 cm, while obstacles3_subject3 at the
+high end (1.19 cm) completes 98% of rollouts. walk4_subject1, which has the
+lowest E_g-mpbpe at 60 mm, is at 0.88 cm rather than the top of the list.
 
 ---
 
