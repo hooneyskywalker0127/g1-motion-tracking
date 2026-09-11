@@ -1,0 +1,2 @@
+WARNING Fri Sep 11 18:30:47 2026: Nan, Inf or huge value in QACC at DOF 12. The simulation is unstable. Time = 0.4480.
+

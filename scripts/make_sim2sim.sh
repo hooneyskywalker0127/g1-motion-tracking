@@ -35,18 +35,25 @@ for SEQ in $SEQS; do
   else
     rm -f "$MJ"
     "$PY" "$REPO/src/render_mujoco_state.py" "$SEQ" \
-          --distance 3.0 --out "$MJ" || { echo "  !! 렌더 실패"; continue; }
+          --distance 2.598 --elevation -35.26 --azimuth 45 --out "$MJ" || { echo "  !! 렌더 실패"; continue; }
     touch "$MJ.track"
   fi
 
-  # 2. 자막 문구를 두 json 에서 뽑는다
+  # 2. Isaac 영상 앞을 잘라 두 패널의 시점을 맞춘다.
+  #    레퍼런스 앞에 T자세 보정 구간이 있어 Isaac 은 그것까지 그리는데
+  #    MuJoCo 기록은 그 뒤에서 시작했다. 그 차이만큼 Isaac 을 건너뛴다.
+  OFF=$("$PY" "$REPO/src/sim2sim_offset.py" "$SEQ" | awk '{print $2}')
+  case "$OFF" in ""|-1) OFF=0 ;; esac
+  echo "  Isaac 앞 ${OFF}초 건너뜀"
+
+  # 3. 자막 문구를 두 json 에서 뽑는다
   read -r L R <<<"$("$SYSPY" "$REPO/src/sim2sim_caption.py" "$SEQ")"
   [ -n "$L" ] || { echo "  !! 자막 생성 실패"; continue; }
   LEFT=$(echo "$L" | tr '~' ' '); RIGHT=$(echo "$R" | tr '~' ' ')
 
-  # 3. 합성. 위 제목띠 70px, 아래 자막띠 110px.
+  # 4. 합성. 위 제목띠 70px, 아래 자막띠 110px.
   ffmpeg -v error -y \
-    -i "$POL" -i "$MJ" \
+    -ss "$OFF" -i "$POL" -i "$MJ" \
     -filter_complex "\
 [0:v]fps=30,scale=960:540,setsar=1[a];\
 [1:v]fps=30,scale=960:540,setsar=1[b];\
