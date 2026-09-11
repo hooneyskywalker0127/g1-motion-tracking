@@ -40,6 +40,7 @@ EE_Z = 0.25
 EE_BODIES = ("left_ankle_roll_link", "right_ankle_roll_link",
              "left_wrist_yaw_link", "right_wrist_yaw_link")
 ANKLE_TO_SOLE = 0.02
+CONTACT_TH = 150.0   # N, legged_estimation/LinearKalmanFilter.h
 
 # ThorArena (arXiv:2607.06052, 식 3) 의 Force-Aware Tracking Score.
 #   S_i = 100 exp(-E_i / sigma) * s_i ,  s_i = min(T_i / T_ref, 1) ,  sigma = 0.15 m
@@ -58,9 +59,19 @@ def quat_to_mat(q):
     ])
 
 
-def evaluate(seq, stride, height="estimator"):
-    d = np.load(ROOT / "outputs" / "policy_io" / f"{seq}.npz", allow_pickle=True)
+def evaluate(seq, stride, height="estimator", gate_contact=False, from_dir="policy_io"):
+    d = np.load(ROOT / "outputs" / from_dir / f"{seq}.npz", allow_pickle=True)
     io, io_t, od, od_t = d["io"], d["io_t"], d["od"], d["od_t"]
+
+    # 부양 구간에서는 베이스 높이 추정을 믿을 수 없다 (arXiv:2210.02127).
+    # 접촉 문턱은 구현값을 그대로 쓴다 (LinearKalmanFilter.h: contactForceThreshold).
+    loaded = None
+    if gate_contact:
+        if "wl" not in d or d["wl"].size == 0:
+            raise SystemExit(f"{seq}: 접촉 기록이 없다. policy_io_contact 쪽을 쓸 것.")
+        wl = np.interp(io_t, d["wl_t"], d["wl"])
+        wr = np.interp(io_t, d["wr_t"], d["wr_"])
+        loaded = (wl >= CONTACT_TH) | (wr >= CONTACT_TH)
 
     path = POLICY_DIR / f"{seq}.onnx"
     md = {e.key: e.value for e in onnx.load(str(path)).metadata_props}
@@ -94,7 +105,11 @@ def evaluate(seq, stride, height="estimator"):
 
     idx = range(0, len(io), stride)
     first_fail, reason = None, None
+    skipped = 0
     for i in idx:
+        if loaded is not None and not loaded[i]:
+            skipped += 1
+            continue
         _, bpos, bquat = ref(k0 + i)
         bpos, bquat = bpos[0], bquat[0]
 
@@ -144,6 +159,7 @@ def evaluate(seq, stride, height="estimator"):
         isaac_alive_ratio=(isaac["mean_alive_frames"] / isaac["motion_frames"]
                            if isaac else None),
         isaac_success=isaac.get("success_rate"),
+        skipped_ratio=skipped / max(len(list(idx)), 1),
     )
 
 
@@ -153,14 +169,17 @@ if __name__ == "__main__":
     ap.add_argument("--stride", type=int, default=5)
     ap.add_argument("--height", choices=["estimator", "kinematics"], default="estimator",
                     help="월드 높이를 어디서 얻을지. 추정기 발산을 빼려면 kinematics.")
+    ap.add_argument("--gate-contact", action="store_true",
+                    help="한 발이라도 실려 있을 때만 판정한다. 접촉 기록이 필요하다.")
+    ap.add_argument("--dir", default="policy_io", help="읽을 폴더 (outputs 아래).")
     a = ap.parse_args()
-    seqs = a.seqs or sorted(p.stem for p in (ROOT / "outputs" / "policy_io").glob("*.npz"))
+    seqs = a.seqs or sorted(p.stem for p in (ROOT / "outputs" / a.dir).glob("*.npz"))
 
     print(f"{'시퀀스':<22}{'MuJoCo생존':>12}{'Isaac생존':>11}{'Isaac성공':>11}"
           f"{'실패시각':>10}{'사유':>14}")
     for s in seqs:
         try:
-            r = evaluate(s, a.stride, a.height)
+            r = evaluate(s, a.stride, a.height, a.gate_contact, a.dir)
         except Exception as e:
             print(f"{s:<22} 건너뜀 ({type(e).__name__})")
             continue
