@@ -39,7 +39,8 @@ for SEQ in $SEQS; do
   if [ "$ok" -ne 1 ]; then echo "  !! 컨트롤러 활성 실패"; continue; fi
   sleep 3
 
-  ( source /opt/ros/jazzy/setup.bash >/dev/null 2>&1
-    python3 "$REPO/scripts/record_policy_io.py" "$OUT/$SEQ.npz" --seconds "$SECS" ) 2>&1 | tail -1
+  # ROS setup 스크립트가 미정의 변수를 건드리므로 서브셸에서 set -u 를 끈다
+  ( set +u; source /opt/ros/jazzy/setup.bash >/dev/null 2>&1
+    python3 "$REPO/scripts/record_policy_io.py" "$OUT/$SEQ.npz" --seconds "$SECS" ) 2>&1 | tail -2
 done
 echo "전체 완료 $(date +%H:%M:%S)"
