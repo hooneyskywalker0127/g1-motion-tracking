@@ -101,7 +101,9 @@ def evaluate(seq, npz_path):
     bad[:acquire] = False
     first = int(np.argmax(bad)) if bad[acquire:].any() else n
 
-    k = max(first, 1)
+    # 추종을 한 번도 못 잡으면(acquire == n) 평균 낼 구간이 없다. 그대로 nan 으로 둔다.
+    k = min(max(first, acquire + 1), n)
+    empty = acquire >= k
 
     # Isaac 쪽 eval.py 결과를 그대로 옆에 둔다. 지표 정의가 같아서 바로 비교된다.
     ev = EVAL_DIR / f"{seq}.json"
@@ -119,9 +121,9 @@ def evaluate(seq, npz_path):
         alive_messages=first - acquire,
         alive_ratio=float((first - acquire) / max(n - acquire, 1)),
         success=bool(first >= n),
-        e_mpjpe_rad=float(err_jnt[acquire:k].mean()),
-        e_anchor_pos_m=float(err_anchor[acquire:k].mean()),
-        max_anchor_pos_m=float(err_anchor[acquire:k].max()),
+        e_mpjpe_rad=float("nan") if empty else float(err_jnt[acquire:k].mean()),
+        e_anchor_pos_m=float("nan") if empty else float(err_anchor[acquire:k].mean()),
+        max_anchor_pos_m=float("nan") if empty else float(err_anchor[acquire:k].max()),
         isaac_e_mpjpe_rad=isaac.get("e_mpjpe_rad"),
         isaac_e_g_mpbpe_mm=isaac.get("e_g_mpbpe_mm_all"),
         isaac_alive_ratio=(isaac["mean_alive_frames"] / isaac["motion_frames"]

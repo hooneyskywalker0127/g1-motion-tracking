@@ -16,6 +16,7 @@ import numpy as np
 import rclpy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
+from geometry_msgs.msg import WrenchStamped
 from std_msgs.msg import Float64MultiArray
 
 TOPIC = "/walking_controller/policy_io"
@@ -30,6 +31,9 @@ def main():
     rclpy.init()
     node = rclpy.create_node("policy_io_recorder")
     io, js, od = [], [], []
+    # 발 접촉. 추정기가 발 접촉을 전제로 하므로, 양발이 뜨는 구간을 알아야
+    # 추정기 발산과 실제 추종 실패를 가를 수 있다.
+    wr = {"L": [], "R": []}
     node.create_subscription(
         Float64MultiArray, TOPIC,
         lambda m: io.append((time.time(), np.asarray(m.data))), 500)
@@ -42,6 +46,11 @@ def main():
             m.pose.pose.position.x, m.pose.pose.position.y, m.pose.pose.position.z,
             m.pose.pose.orientation.w, m.pose.pose.orientation.x,
             m.pose.pose.orientation.y, m.pose.pose.orientation.z]))), 500)
+
+    for side, topic in (("L", "/wrench_LL_FOOT"), ("R", "/wrench_LR_FOOT")):
+        node.create_subscription(
+            WrenchStamped, topic,
+            lambda m, s=side: wr[s].append((time.time(), m.wrench.force.z)), 200)
 
     t0 = time.time()
     while time.time() - t0 < a.seconds:
@@ -59,8 +68,13 @@ def main():
         js_names=np.array(js[0][1]) if js else np.zeros(0, dtype=str),
         od_t=np.array([t for t, _ in od]) if od else np.zeros(0),
         od=np.stack([v for _, v in od]) if od else np.zeros((0, 7)),
+        wl_t=np.array([t for t, _ in wr["L"]]) if wr["L"] else np.zeros(0),
+        wl=np.array([v for _, v in wr["L"]]) if wr["L"] else np.zeros(0),
+        wr_t=np.array([t for t, _ in wr["R"]]) if wr["R"] else np.zeros(0),
+        wr_=np.array([v for _, v in wr["R"]]) if wr["R"] else np.zeros(0),
     )
-    print(f"저장 {a.out} · policy_io {len(io)} · joint_states {len(js)} · odom {len(od)}")
+    print(f"저장 {a.out} · policy_io {len(io)} · joint_states {len(js)} · odom {len(od)}"
+          f" · wrench {len(wr['L'])}/{len(wr['R'])}")
 
 
 if __name__ == "__main__":

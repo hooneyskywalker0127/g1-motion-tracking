@@ -39,6 +39,7 @@ ANCHOR_ORI = 0.8
 EE_Z = 0.25
 EE_BODIES = ("left_ankle_roll_link", "right_ankle_roll_link",
              "left_wrist_yaw_link", "right_wrist_yaw_link")
+ANKLE_TO_SOLE = 0.02
 
 
 def quat_to_mat(q):
@@ -51,7 +52,7 @@ def quat_to_mat(q):
     ])
 
 
-def evaluate(seq, stride):
+def evaluate(seq, stride, height="estimator"):
     d = np.load(ROOT / "outputs" / "policy_io" / f"{seq}.npz", allow_pickle=True)
     io, io_t, od, od_t = d["io"], d["io_t"], d["od"], d["od_t"]
 
@@ -97,8 +98,16 @@ def evaluate(seq, stride):
         data.qpos[3:7] = q
         data.qpos[qadr] = io[i, 73:102] + qdef
         mj.mj_kinematics(m, data)
-        rob = data.xpos[bid]
+        rob = data.xpos[bid].copy()
         Rrob = data.xmat[bid[anchor]].reshape(3, 3)
+
+        if height == "kinematics":
+            # 추정기가 주는 월드 높이 대신, 낮은 발을 지면에 놓고 순기구학으로 높이를 잡는다.
+            # 추정기 발산을 빼고 정책만의 전이 손실을 보기 위한 것이다.
+            # 양발이 동시에 뜨는 구간에서는 높이를 낮게 잡는다는 한계가 있다.
+            sole = min(rob[bnames.index(n), 2]
+                       for n in ("left_ankle_roll_link", "right_ankle_roll_link"))
+            rob[:, 2] += ANKLE_TO_SOLE - sole
 
         bad = None
         if abs(bpos[anchor, 2] - rob[anchor, 2]) > ANCHOR_Z:
@@ -135,6 +144,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("seqs", nargs="*")
     ap.add_argument("--stride", type=int, default=5)
+    ap.add_argument("--height", choices=["estimator", "kinematics"], default="estimator",
+                    help="월드 높이를 어디서 얻을지. 추정기 발산을 빼려면 kinematics.")
     a = ap.parse_args()
     seqs = a.seqs or sorted(p.stem for p in (ROOT / "outputs" / "policy_io").glob("*.npz"))
 
@@ -142,7 +153,7 @@ if __name__ == "__main__":
           f"{'실패시각':>10}{'사유':>14}")
     for s in seqs:
         try:
-            r = evaluate(s, a.stride)
+            r = evaluate(s, a.stride, a.height)
         except Exception as e:
             print(f"{s:<22} 건너뜀 ({type(e).__name__})")
             continue
