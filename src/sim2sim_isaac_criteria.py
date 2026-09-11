@@ -41,6 +41,12 @@ EE_BODIES = ("left_ankle_roll_link", "right_ankle_roll_link",
              "left_wrist_yaw_link", "right_wrist_yaw_link")
 ANKLE_TO_SOLE = 0.02
 
+# ThorArena (arXiv:2607.06052, 식 3) 의 Force-Aware Tracking Score.
+#   S_i = 100 exp(-E_i / sigma) * s_i ,  s_i = min(T_i / T_ref, 1) ,  sigma = 0.15 m
+# 추종 오차와 생존을 곱으로 묶는다. 추종만 보면 안 갈리고 생존만 보면 오차를 버리는
+# 문제를 한 수로 푼다. 여기서는 외력 재생 없이("no-force setting") 같은 식을 쓴다.
+FATS_SIGMA = 0.15
+
 
 def quat_to_mat(q):
     """(w, x, y, z) → 3x3"""
@@ -132,6 +138,7 @@ def evaluate(seq, stride, height="estimator"):
     return dict(
         motion=seq,
         alive_ratio=alive / n,
+        fats=None,          # 호출부에서 E-mpbpe 를 받아 채운다
         fail_s=None if first_fail is None else first_fail / CTRL_HZ,
         reason=reason or "-",
         isaac_alive_ratio=(isaac["mean_alive_frames"] / isaac["motion_frames"]

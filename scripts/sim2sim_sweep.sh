@@ -3,10 +3,11 @@
 # 물리·관측은 건드리지 않는다. 기록기는 scripts/record_policy_io.py.
 #
 #   bash scripts/sim2sim_sweep.sh [초] [시퀀스 ...]
+#   OUT=<폴더> 로 저장 위치를 바꾼다. 이미 있는 파일은 건너뛴다.
 set -u
 SECS=${1:-260}; shift || true
 REPO=/home/sehoon/Documents/GitHub/g1-motion-tracking
-OUT=$REPO/outputs/policy_io
+OUT=${OUT:-$REPO/outputs/policy_io}
 POL=/home/sehoon/colcon_ws/policies
 mkdir -p "$OUT"
 
