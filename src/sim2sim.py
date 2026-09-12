@@ -104,12 +104,21 @@ class Sim2Sim:
         if motion_npz:
             d = np.load(motion_npz)
             # npz 는 로봇 전체 바디 30개를 담고 ONNX 는 그중 14개만 쓴다.
-            # 순서를 문서로 못 찾아 중간 프레임 위치를 대조해 찾는다 (잔차 0.0 m).
-            probe = self.sess.run(
-                ["body_pos_w"], {"obs": np.zeros((1, 160), np.float32),
-                                 "time_step": np.array([[1000]], np.float32)})[0][0]
-            npz_bp = d["body_pos_w"][min(1000, len(d["body_pos_w"]) - 1)]
-            sel = [int(np.argmin(np.linalg.norm(npz_bp - q, axis=1))) for q in probe]
+            # 순서를 문서로 못 찾아 위치를 대조해 찾는다. 한 프레임만 보면 그 순간
+            # 우연히 겹친 바디를 고를 수 있어(torso_link 에서 실제로 갈렸다)
+            # 여러 프레임의 거리 합으로 정한다.
+            n_ref = len(d["body_pos_w"])
+            frames = [k for k in (200, 700, 1500, 3000, 5000) if k < n_ref] or [n_ref // 2]
+            cost = None
+            for k in frames:
+                probe = self.sess.run(
+                    ["body_pos_w"], {"obs": np.zeros((1, 160), np.float32),
+                                     "time_step": np.array([[k]], np.float32)})[0][0]
+                c = np.linalg.norm(d["body_pos_w"][k][None, :, :] - probe[:, None, :], axis=-1)
+                cost = c if cost is None else cost + c
+            sel = [int(i) for i in np.argmin(cost, axis=1)]
+            if len(set(sel)) != len(sel):
+                raise SystemExit(f"{seq}: 바디 매핑에 중복이 있다 {sel}")
             self.ref_npz = (d["joint_pos"], d["joint_vel"],
                             d["body_pos_w"][:, sel], d["body_quat_w"][:, sel])
 
