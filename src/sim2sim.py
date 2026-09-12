@@ -67,7 +67,12 @@ def limit_of(name: str) -> float:
 
 
 class Sim2Sim:
-    def __init__(self, seq: str, headless: bool = True):
+    def __init__(self, seq: str, headless: bool = True, motion_npz: str | None = None):
+        """motion_npz 를 주면 레퍼런스를 ONNX 대신 그 파일에서 읽는다.
+
+        ONNX 에는 학습 때 쓴 레퍼런스가 텐서로 박혀 있다(exporter.py:39-50).
+        리타게팅을 고친 뒤 그 효과만 보려면 정책은 그대로 두고 레퍼런스만 바꿔야 한다.
+        """
         path = POLICY_DIR / f"{seq}.onnx"
         md = {e.key: e.value for e in onnx.load(str(path)).metadata_props}
         self.sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
@@ -95,8 +100,24 @@ class Sim2Sim:
         self.headless = headless
         self.last_action = np.zeros(self.num_dofs, dtype=np.float32)
 
+        self.ref_npz = None
+        if motion_npz:
+            d = np.load(motion_npz)
+            # npz 는 로봇 전체 바디 30개를 담고 ONNX 는 그중 14개만 쓴다.
+            # 순서를 문서로 못 찾아 중간 프레임 위치를 대조해 찾는다 (잔차 0.0 m).
+            probe = self.sess.run(
+                ["body_pos_w"], {"obs": np.zeros((1, 160), np.float32),
+                                 "time_step": np.array([[1000]], np.float32)})[0][0]
+            npz_bp = d["body_pos_w"][min(1000, len(d["body_pos_w"]) - 1)]
+            sel = [int(np.argmin(np.linalg.norm(npz_bp - q, axis=1))) for q in probe]
+            self.ref_npz = (d["joint_pos"], d["joint_vel"],
+                            d["body_pos_w"][:, sel], d["body_quat_w"][:, sel])
+
     # --- 레퍼런스 -----------------------------------------------------------
     def reference(self, step: int):
+        if self.ref_npz is not None:
+            k = min(step, len(self.ref_npz[0]) - 1)
+            return [a[k] for a in self.ref_npz]
         out = self.sess.run(
             ["joint_pos", "joint_vel", "body_pos_w", "body_quat_w"],
             {"obs": np.zeros((1, 160), np.float32),
@@ -217,9 +238,11 @@ if __name__ == "__main__":
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--video", default=None)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--motion", default=None,
+                    help="레퍼런스를 ONNX 대신 이 npz 에서 읽는다")
     a = ap.parse_args()
 
-    sim = Sim2Sim(a.seq)
+    sim = Sim2Sim(a.seq, motion_npz=a.motion)
     log = sim.run(a.start_step, int(a.seconds / CONTROL_DT), a.video)
 
     rel = np.linalg.norm(log["ref_body_pos_w"] - log["rob_body_pos_w"], axis=-1).mean()
