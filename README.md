@@ -221,6 +221,20 @@ sim과 sim-dr을 나눠 보고하는 방식과 같습니다.
 obstacles3_subject3(1.19 cm)은 98%로 완주합니다. E_g-mpbpe가 가장 낮은
 walk4_subject1(60 mm)도 발 오차는 0.88 cm로 최상위가 아닙니다.
 
+영상으로 보면 더 분명합니다. 종료 조건에 걸리면 에피소드가 끝나고 프레임 0부터
+다시 시작하므로, 화면에서는 로봇이 갑자기 처음 자세로 돌아갑니다.
+
+![walk3_subject1 리셋](docs/reset_walk3_subject1.gif)
+
+walk3_subject1, 195초 지점. 앵커 높이가 임계를 넘습니다.
+
+![walk3_subject4 리셋](docs/reset_walk3_subject4.gif)
+
+walk3_subject4, 218초 지점. 발목·손목 높이가 임계를 넘습니다.
+
+완주율 0%가 처음부터 못 따라간다는 뜻이 아닙니다. 3분 넘게 따라가다 한 지점에서
+걸립니다. 평균 추적 길이가 78%와 88%인 것이 그 뜻입니다.
+
 ### 완주하지 못한 셋은 학습이 아니라 레퍼런스 문제입니다
 
 `src/motion_defect_census.py`로 네 가지를 다시 재면 셋이 한눈에 갈립니다.

@@ -217,6 +217,21 @@ Foot error ranking did not predict policy performance. The three sequences at
 high end (1.19 cm) completes 98% of rollouts. walk4_subject1, which has the
 lowest E_g-mpbpe at 60 mm, is at 0.88 cm rather than the top of the list.
 
+It is clearer on video. Once a termination condition fires the episode ends and
+restarts from frame 0, so on screen the robot snaps back to its initial pose.
+
+![walk3_subject1 reset](docs/reset_walk3_subject1.gif)
+
+walk3_subject1 at 195 s, where the anchor height crosses its threshold.
+
+![walk3_subject4 reset](docs/reset_walk3_subject4.gif)
+
+walk3_subject4 at 218 s, where an ankle or wrist height crosses its threshold.
+
+A 0% completion rate does not mean the policy never follows the reference. It
+follows for over three minutes and then catches on one moment. That is what the
+78% and 88% mean tracked lengths are describing.
+
 ### The three that never finish are a reference problem, not a training one
 
 Re-measuring the references with `src/motion_defect_census.py` separates them
