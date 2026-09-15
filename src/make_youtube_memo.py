@@ -7,7 +7,7 @@ import glob, json, os, sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
-from sim2sim_polysim import score
+from score_standard import score
 
 R = "/home/sehoon/Documents/GitHub/g1-motion-tracking"
 DEST = "/home/sehoon/Desktop/참고/할일/26/09/g1_motion_tracking"
@@ -17,17 +17,18 @@ def low_onset(seq):
     z = np.load(f"/home/sehoon/motions_fixed/{seq}.npz")["body_pos_w"][:, 0, 2]
     return int(np.argmax(z < 0.35)) / 50.0 if (z < 0.35).any() else None
 
-for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full/*.npz")):
+for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full2/*.npz")):
     seq = os.path.basename(f)[:-4]
-    d = dict(np.load(f))
+    d = np.load(f)
     r = score(d)
     n = r["frames"]; dur = n / 50.0
-    ip = f"{R}/outputs/eval_fixed/{seq}.json"
+    ip = f"{R}/outputs/eval_polysim/{seq}.json"
     iso = json.load(open(ip)) if os.path.exists(ip) else {}
     onset = low_onset(seq)
 
-    title = (f"Isaac Lab vs MuJoCo: the same tracking policy, frame-matched "
-             f"on {seq} (Unitree G1)")
+    # 유튜브 제목은 100자까지다. 가장 긴 시퀀스 이름으로도 넘지 않게 짧게 쓴다.
+    title = f"sim-to-sim: Isaac Lab vs MuJoCo, frame-matched on {seq} (Unitree G1)"
+    assert len(title) <= 100, f"{seq} 제목 {len(title)}자"
 
     lines = [
         "Left: Isaac Lab, where the policy was trained.",
@@ -48,17 +49,30 @@ for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full/*.npz")):
         "",
         "Measured over the full sequence",
     ]
-    if iso:
-        lines.append(f"- Isaac completion rate: {iso['success_rate']*100:.0f}%"
-                     f" over {iso['num_envs']} rollouts")
-        lines.append(f"- Isaac E_g-mpbpe: {iso['e_g_mpbpe_mm_all']:.0f} mm,"
-                     " body position error in global coordinates")
+    jabs = float(np.abs(d["ref_joint_pos"] - d["rob_joint_pos"]).mean())
+    pf = lambda ok: "pass" if ok else "fail"
+    # 양쪽을 같은 정의로 적는다. 이름을 계보마다 다르게 쓰면 다른 지표로 읽힌다.
     lines += [
-        f"- MuJoCo E_g-mpjpe: {r['e_g_mpjpe']:.0f} mm, global body position error",
-        f"- MuJoCo E_mpjpe: {r['e_mpjpe']:.0f} mm, body position error"
-        " after aligning on the root",
-        f"- MuJoCo time above the 0.5 m failure threshold: {r['over_frac']*100:.1f}%"
-        " of the rollout",
+        "                          Isaac Lab      MuJoCo",
+        f"global body error         {iso.get('e_g_mpbpe_mm', float('nan')):>7.0f} mm"
+        f"{r['mpkpe']:>10.0f} mm",
+        f"local pose, re-anchored   {iso.get('e_mpbpe_mm', float('nan')):>7.0f} mm"
+        f"{r['r_mpkpe']:>10.0f} mm",
+        f"joint angle               {iso.get('e_mpjpe_rad', float('nan')):>7.3f} rad"
+        f"{jabs:>9.3f} rad",
+        f"survives termination      {pf(iso.get('success_rate', 0) > 0.5):>10}"
+        f"{pf(r['bm_success']):>12}",
+        f"stays within 0.5 m        {pf(iso.get('success_rate_polysim', 0) > 0.5):>10}"
+        f"{pf(r['poly_success']):>12}",
+        "",
+        "Two pass criteria, because there is no single one.",
+        "BeyondMimic ends the episode when the anchor height, the anchor",
+        "orientation or an ankle or wrist height leaves its threshold; all three",
+        "look at z alone and never see horizontal drift.",
+        "PolySim counts a rollout failed once the mean global body position error",
+        "crosses 0.5 m, which is built to catch exactly that.",
+        "Local pose is the reference re-anchored to the robot's torso with yaw",
+        "removed, the same quantity on both sides.",
     ]
     if onset is not None:
         lines += ["",
@@ -67,15 +81,18 @@ for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full/*.npz")):
                   "That part of LAFAN1 has the actor sitting or lying down, which the",
                   "G1 cannot reproduce, so both simulators lose the reference there."]
     lines += ["",
-              "Metric definitions follow PolySim (arXiv:2510.01708): a rollout counts as",
-              "a failure once the mean global body position error exceeds 0.5 m."]
+              "Criteria and definitions: BeyondMimic (arXiv:2508.08241) termination",
+              "thresholds, PolySim (arXiv:2510.01708) 0.5 m, mjlab MPKPE/R-MPKPE.",
+              "Code: github.com/hooneyskywalker0127/g1-motion-tracking",
+              "Policies: huggingface.co/hooneyskywalker/g1-motion-tracking-policies"]
 
     body = "\n".join(lines)
     out_dir = f"{DEST}/{seq}/isaac_mujoco"
     os.makedirs(out_dir, exist_ok=True)
     with open(f"{out_dir}/{seq}_유튜브_메모.md", "w") as fp:
-        fp.write(f"# {seq} Isaac vs MuJoCo 유튜브 메모\n\n제목\n\n```\n{title}\n```\n\n"
-                 f"설명\n\n```\n{body}\n```\n")
-    with open(f"{out_dir}/{seq}_youtube.txt", "w") as fp:
-        fp.write(title + "\n\n" + body + "\n")
-    print(f"{seq}")
+        # 코드펜스를 쓰면 복사할 때 따라붙는다. 제목과 설명만 남긴다.
+        fp.write(f"[제목]\n{title}\n\n[설명]\n{body}\n")
+    old_txt = f"{out_dir}/{seq}_youtube.txt"
+    if os.path.exists(old_txt):
+        os.remove(old_txt)      # 같은 내용을 두 파일로 두던 것을 정리한다
+    print(f"{seq:<22} {title[:60]}")

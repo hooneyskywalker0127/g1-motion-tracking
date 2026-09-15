@@ -452,6 +452,25 @@ that artifacts left in retargeted trajectories — foot sliding, self-penetratio
 physically infeasible poses — measurably reduce the robustness of the tracking
 policy trained on them.
 
+## What is left
+
+The order follows the dependencies: 1 and 2 change what 3 operates on.
+
+1. Redo selection. The current 19 were picked on foot error, which turned out
+   not to predict policy performance. Run `src/motion_defect_census.py` over all
+   77 retargeted clips and select on ground penetration, airborne fraction, foot
+   slip and joint velocity violation instead.
+2. Correct penetration. Run forward kinematics over each retarget, store the
+   minimum body height per frame, and offset the whole motion by it — the same
+   step Retargeting Matters describes. Two of the sequences that currently never
+   finish may survive this.
+3. Train the remaining two, obstacles1_subject1 and obstacles4_subject2. Steps 1
+   and 2 change which sequences these are.
+4. Score the Isaac side under both criteria. The two-criteria table is filled in
+   for MuJoCo only; `scripts/gt_dump_all.sh` dumps the per-frame global error for
+   all 17 and completes the other two cells.
+5. Put the kobe comparison in a table. The numbers exist.
+
 ## Status
 
 Stages 1 to 3 are done. Stage 4 has 17 of the 19 selected sequences trained to

@@ -31,7 +31,15 @@ EPLEN=$(python3 -c "print(float($SECS)+5.0)")
 "$PY" "$R/src/sim2sim.py" "$SEQ" --start_step 0 --seconds "$SECS" \
       --motion "$MOTION" --video "$OUT/${SEQ}_mujoco.mp4" | tail -1
 
-RUN=$(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*_"$SEQ"/ | sort | tail -1); RUN=$(basename "${RUN%/}")
+# 런 이름이 시퀀스 이름과 다를 수 있다. kobe 는 고친 런이 kobe_order_ground 라
+# *_kobe_level1 패턴에 안 걸려서 버그 있던 옛 체크포인트로 렌더된 적이 있다.
+if [ -n "${RUN_OVERRIDE:-}" ]; then
+  RUN=$RUN_OVERRIDE
+else
+  RUN=$(ls -1d "$WBT"/logs/rsl_rl/g1_flat/*_"$SEQ"/ | sort | tail -1); RUN=$(basename "${RUN%/}")
+fi
+[ -d "$WBT/logs/rsl_rl/g1_flat/$RUN" ] || { echo "! 런 없음 $RUN"; exit 1; }
+echo "    런 $RUN"
 CKPT=$(ls -1 "$WBT/logs/rsl_rl/g1_flat/$RUN"/model_*.pt | sed 's/.*model_//;s/\.pt//' | sort -n | tail -1)
 (cd "$WBT" && OMP_NUM_THREADS=1 "$PY" scripts/rsl_rl/play.py --task=Tracking-Flat-G1-v0 \
    --num_envs 1 --load_run="$RUN" --checkpoint="model_$CKPT.pt" \
