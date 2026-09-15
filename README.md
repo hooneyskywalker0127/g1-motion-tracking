@@ -488,6 +488,10 @@ Motion Retargeting for Humanoid Motion Tracking([arXiv:2510.02252](https://arxiv
 같은 지표를 내야 나란히 놓입니다. ASAP 데이터셋의 kobe 모션 하나를
 `src/asap_to_csv.py`로 변환해 같은 파이프라인에 태웠습니다. 206프레임, 4.1초입니다.
 
+![kobe](docs/kobe.gif)
+
+4.1초 전체입니다. 왼쪽이 Isaac Lab, 오른쪽이 MuJoCo입니다.
+
 | | PolySim 표 III | 이 저장소 |
 | --- | --- | --- |
 | 조건 | IsaacSim_DR → MuJoCo | Isaac Lab → MuJoCo |

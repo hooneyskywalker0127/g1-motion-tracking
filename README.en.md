@@ -474,6 +474,10 @@ directly. The same motion under the same metrics is what makes them
 comparable. One motion from the ASAP dataset, kobe, was converted with
 `src/asap_to_csv.py` and run through the same pipeline: 206 frames, 4.1 s.
 
+![kobe](docs/kobe.gif)
+
+The full 4.1 s. Isaac Lab on the left, MuJoCo on the right.
+
 | | PolySim Table III | here |
 | --- | --- | --- |
 | setting | IsaacSim_DR → MuJoCo | Isaac Lab → MuJoCo |
