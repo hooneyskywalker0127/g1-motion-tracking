@@ -221,6 +221,47 @@ sim과 sim-dr을 나눠 보고하는 방식과 같습니다.
 obstacles3_subject3(1.19 cm)은 98%로 완주합니다. E_g-mpbpe가 가장 낮은
 walk4_subject1(60 mm)도 발 오차는 0.88 cm로 최상위가 아닙니다.
 
+### 완주하지 못한 셋은 학습이 아니라 레퍼런스 문제입니다
+
+`src/motion_defect_census.py`로 네 가지를 다시 재면 셋이 한눈에 갈립니다.
+
+| 시퀀스 | 지면 관통 | 최대 관통 | 발 미끄럼 최대 | 공중 비율 |
+| --- | --- | --- | --- | --- |
+| obstacles2_subject1 | 0.9% | 4.2 cm | 0.35 m/s | 26.8% |
+| walk3_subject1 | 6.0% | 7.6 cm | 1.59 m/s | 0.2% |
+| walk3_subject4 | 4.3% | 4.8 cm | 1.08 m/s | 0.2% |
+| walk1_subject1 (완주) | 0.0% | 0.4 cm | 0.90 m/s | 0.0% |
+
+`obstacles2_subject1`은 프레임의 26.8%가 공중입니다. 배우가 계단을 오르는
+구간이라 평지에서는 발이 닿을 지면이 없습니다. 나머지 둘은 발이 지면을
+파고듭니다. 완주하는 `walk1_subject1`은 관통이 0%입니다.
+
+즉 정책이 못 따라간 것이 아니라 따라갈 수 없는 목표를 준 것입니다. 선별
+기준이 발 오차 하나였고, 그 기준으로는 이 셋이 중간 대역이라 통과했습니다.
+지면 관통과 공중 비율은 보지 않았습니다.
+
+### 같은 재료로 96~100%를 받은 연구는 두 가지를 더 했습니다
+
+Retargeting Matters([arXiv:2510.02252](https://arxiv.org/abs/2510.02252))는
+같은 LAFAN1, 같은 G1, 같은 BeyondMimic으로 sim 100회에서 96~100%를
+보고합니다. 논문이 그 차이를 직접 적어두었습니다.
+
+첫째, 문제가 되는 동작을 애초에 넣지 않습니다.
+
+> We do not include motions with complex interaction with the environment,
+> such as crawling or getting up from the floor
+
+이 저장소가 완주하지 못한 셋이 정확히 그 부류입니다.
+
+둘째, 관통을 측정해 보정합니다.
+
+> We fix this by running forward kinematics on the retargeted sequences,
+> storing the minimum body height at each frame, and then offsetting the
+> entire motion by the mean minimum body height
+
+이 저장소는 둘 다 하지 않았습니다. 정책 쪽 차이가 아니라 3단계에서 갈린
+차이입니다.
+
 ---
 
 ---
@@ -231,10 +272,38 @@ walk4_subject1(60 mm)도 발 오차는 0.88 cm로 최상위가 아닙니다.
 액터를 그대로 MuJoCo에 올려, 재학습도 미세조정도 없이 17개 시퀀스를 모션 전체
 길이로 다시 돌렸습니다.
 
-판정은 PolySim([arXiv:2510.01708](https://arxiv.org/abs/2510.01708)) 기준을
-씁니다. 전역 바디 위치 오차의 평균이 한 번이라도 0.5 m를 넘으면 그 롤아웃은
-실패입니다. Isaac 자체 종료 조건은 앵커의 높이와 방향만 보기 때문에 수평
-표류를 놓칩니다.
+판정 기준은 하나가 아닙니다. 계보마다 다르고 재는 것도 다릅니다. 그래서 같은
+롤아웃을 두 기준으로 각각 채점했습니다. `src/score_standard.py`가 그 일을 합니다.
+
+BeyondMimic 계열은 종료 조건으로 봅니다
+(`tracking_env_cfg.py` 255-275). 셋 중 하나라도 걸리면 그 시점에 끝납니다.
+
+| 조건 | 식 | 문턱 |
+| --- | --- | --- |
+| anchor_pos | \|ref_anchor_z − rob_anchor_z\| | 0.25 |
+| anchor_ori | \|ref_gravity_z − rob_gravity_z\| | 0.8 |
+| ee_body_pos | 발목·손목 4곳 중 \|ref_rel_z − rob_z\| | 0.25 |
+
+PolySim([arXiv:2510.01708](https://arxiv.org/abs/2510.01708)) 계열은 전역 바디
+위치 오차의 평균이 한 번이라도 0.5 m를 넘으면 실패로 봅니다.
+
+세 종료 조건이 전부 z 성분만 봅니다. 수평 표류를 보지 않습니다. 반대로
+PolySim 기준은 그것을 정면으로 잡습니다. 두 기준이 다른 것을 재고 있습니다.
+
+같은 17개 롤아웃을 두 기준으로 채점하면 이렇습니다.
+
+| 기준 | 성공 |
+| --- | --- |
+| BeyondMimic 종료 조건 | 14 / 17 |
+| PolySim 0.5 m | 11 / 17 |
+
+`jumps1_subject1`, `run2_subject4`, `walk2_subject3`이 갈립니다. 끝까지
+넘어지지 않았지만 레퍼런스에서 0.5 m 넘게 벗어난 구간이 있습니다.
+
+주의할 점이 하나 있습니다. PolySim 논문 본문은 평균 바디 오차 0.5 m라고
+적었지만, 공개 코드는 바디 하나라도 커리큘럼 임계값(기본 1.5 m)을 넘는지를
+보고 기본 설정에서는 그 판정이 꺼져 있습니다. 위 숫자는 논문 문구를 구현한
+것입니다.
 
 ![sim2sim](docs/sim2sim.gif)
 
@@ -298,9 +367,15 @@ Isaac 0.202이고 두 쪽의 상관은 0.965입니다. 같은 MuJoCo 롤아웃�
 
 ### 코드
 
+지표 정의도 맞췄습니다. 상대 오차를 처음에는 각자의 골반을 빼서 냈는데, Isaac
+쪽은 torso_link를 앵커로 잡고 yaw까지 재정렬한 `body_pos_relative_w`를 씁니다
+(`commands.py` 284-294). 서로 다른 양이라 나란히 놓을 수 없었습니다. 같은
+롤아웃에서 골반만 뺀 값이 22.1 mm, 정의를 맞춘 값이 30.5 mm입니다.
+
 | 파일 | 하는 일 |
 | --- | --- |
 | `src/sim2sim.py` | onnx 액터를 MuJoCo에서 돌립니다 |
+| `src/score_standard.py` | 같은 롤아웃을 두 기준으로 채점합니다 |
 | `src/sim2sim_polysim.py` | PolySim의 다섯 지표를 계산합니다 |
 | `src/sim2sim_trials.py` | 시퀀스마다 N회 시행해 성공률을 냅니다 |
 | `src/sim2sim_push.py` | 양쪽에 같은 조건으로 밀치기를 줍니다 |
@@ -406,7 +481,7 @@ obstacles4_subject2입니다.
 sim-to-sim은 17개 전부 모션 전체 길이로 끝냈습니다. 비교 영상도 17개 다
 만들었습니다. 결과는 위에 적었습니다.
 
-지금 돌리는 것은 ASAP 데이터셋의 kobe 모션 하나입니다. 우리 17개는 LAFAN1이라
+지금 돌리는 것은 ASAP 데이터셋의 kobe 모션 하나입니다. 위 17개는 LAFAN1이라
 PolySim 논문의 표와 직접 비교가 되지 않습니다. 같은 모션으로 같은 지표를 내야
 표 III(IsaacSim_DR에서 MuJoCo로 옮겼을 때 성공 0.100, E_g-mpjpe 272.6 mm) 옆에
-우리 숫자를 놓을 수 있습니다.
+이 저장소의 숫자를 놓을 수 있습니다.

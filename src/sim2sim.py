@@ -198,8 +198,12 @@ class Sim2Sim:
             writer = imageio.get_writer(video, fps=fps, macro_block_size=1)
             renderer = mujoco.Renderer(self.model, height=720, width=960)
 
+        # BeyondMimic 종료조건과 mjlab R-MPKPE 를 나중에 재려면 자세와 관절속도가
+        # 필요하다. 앞선 롤아웃에는 위치만 남겨서 두 기준 다 못 냈다.
         log = {"ref_body_pos_w": [], "rob_body_pos_w": [],
-               "ref_joint_pos": [], "rob_joint_pos": [], "step": []}
+               "ref_body_quat_w": [], "rob_body_quat_w": [],
+               "ref_joint_pos": [], "rob_joint_pos": [],
+               "ref_joint_vel": [], "rob_joint_vel": [], "step": []}
         pd_target = self.default_dof_pos.copy()
 
         for i in range(steps * SIM_DECIMATION):
@@ -210,12 +214,16 @@ class Sim2Sim:
                 self.last_action = action.copy()
                 pd_target = self.default_dof_pos + self.action_scale * action
 
-                jp, _, bpos, _ = self.reference(t)
+                jp, jv, bpos, bquat = self.reference(t)
                 log["step"].append(t)
                 log["ref_body_pos_w"].append(bpos.copy())
                 log["rob_body_pos_w"].append(self.data.xpos[self.bid].copy())
+                log["ref_body_quat_w"].append(bquat.copy())
+                log["rob_body_quat_w"].append(self.data.xquat[self.bid].copy())
                 log["ref_joint_pos"].append(jp.copy())
                 log["rob_joint_pos"].append(self.data.qpos[self.qadr].copy())
+                log["ref_joint_vel"].append(jv.copy())
+                log["rob_joint_vel"].append(self.data.qvel[self.vadr].copy())
 
                 if writer is not None:
                     cam = mujoco.MjvCamera()

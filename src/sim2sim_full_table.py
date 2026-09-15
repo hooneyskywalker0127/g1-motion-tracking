@@ -4,20 +4,23 @@
 지금 기준이 되는 건 모션 전체 길이로 돌린 outputs/sim2sim_full 이다.
 판정은 PolySim 기준 — 전역 바디 위치 오차 평균이 한 번이라도 0.5 m 를 넘으면 실패.
 """
-import glob, json, os, numpy as np
+import glob, json, os, sys, numpy as np
+sys.path.insert(0, os.path.dirname(__file__))
+from score_standard import score as _bm
 
 FAIL_M, FPS = 0.5, 50
 MJ_TRIALS = "outputs/metrics/horizon_trials.npz"
 tr = dict(np.load(MJ_TRIALS)) if os.path.exists(MJ_TRIALS) else {}
 
 rows = []
-for f in sorted(glob.glob("outputs/sim2sim_full/*.npz")):
+for f in sorted(glob.glob("outputs/sim2sim_full2/*.npz")):
     seq = os.path.basename(f)[:-4]
     d = np.load(f)
     e = np.linalg.norm(d["ref_body_pos_w"] - d["rob_body_pos_w"], axis=-1).mean(axis=1)
-    rel = np.linalg.norm((d["ref_body_pos_w"] - d["ref_body_pos_w"][:, :1])
-                         - (d["rob_body_pos_w"] - d["rob_body_pos_w"][:, :1]),
-                         axis=-1).mean()
+    # 골반만 빼면 Isaac 쪽 e_mpbpe 와 다른 양이 된다. Isaac 은 torso 앵커에
+    # yaw 까지 재정렬한 body_pos_relative_w 를 쓴다 (commands.py 284-294).
+    # 정의를 맞춘다.
+    rel = _bm(d)["r_mpkpe"] / 1000.0
     jnt = np.abs(d["ref_joint_pos"] - d["rob_joint_pos"]).mean()
     over = e > FAIL_M
     fail_s = float(np.argmax(over)) / FPS if over.any() else None
