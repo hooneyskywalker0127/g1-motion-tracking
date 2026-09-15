@@ -50,11 +50,10 @@ CKPT=$(ls -1 "$WBT/logs/rsl_rl/g1_flat/$RUN"/model_*.pt | sed 's/.*model_//;s/\.
    | grep -E "start at motion frame|Wrote" || true
 
 # 자막. 양쪽을 같은 정의로 내는 일은 src/caption_pair.py 가 한다.
-IFS='|' read -r L1 L2 L3 L4 L5 <<< "$("$PY" "$R/src/caption_pair.py" "$SEQ")"
+IFS='|' read -r HD L1 L2 L3 L4 L5 <<< "$("$PY" "$R/src/caption_pair.py" "$SEQ")"
 
 T1="Isaac Lab   trained policy (30,000 iterations)"
 T2="MuJoCo   same policy, zero-shot"
-HD="                                     Isaac Lab       MuJoCo"
 
 # 표 다섯 줄은 등폭 글꼴이라야 열이 맞는다.
 MONO=/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf

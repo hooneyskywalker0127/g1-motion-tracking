@@ -16,11 +16,10 @@ for f in "$OUT/${SEQ}_isaac.mp4" "$OUT/${SEQ}_mujoco.mp4"; do
 done
 
 # 자막. 양쪽을 같은 정의로 내는 일은 src/caption_pair.py 가 한다.
-IFS='|' read -r L1 L2 L3 L4 L5 <<< "$("$PY" "$R/src/caption_pair.py" "$SEQ")"
+IFS='|' read -r HD L1 L2 L3 L4 L5 <<< "$("$PY" "$R/src/caption_pair.py" "$SEQ")"
 
 T1="Isaac Lab   trained policy (30,000 iterations)"
 T2="MuJoCo   same policy, zero-shot"
-HD="                                     Isaac Lab       MuJoCo"
 
 # 표 다섯 줄은 등폭 글꼴이라야 열이 맞는다.
 MONO=/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf

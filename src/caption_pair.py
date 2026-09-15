@@ -24,7 +24,8 @@ q = np.load(f"{R}/outputs/sim2sim_full2/{seq}.npz")
 jabs = np.abs(q["ref_joint_pos"] - q["rob_joint_pos"]).mean()
 
 pf = lambda ok: "pass" if ok else "fail"
-print("|".join([
+# 헤더를 값 열에 맞춘다. 눈대중으로 띄웠더니 둘 다 왼쪽으로 치우쳐 있었다.
+rows = [
     f"global body error        {d['e_g_mpbpe_mm']:>7.0f} mm{r['mpkpe']:>12.0f} mm",
     f"local pose, re-anchored  {d['e_mpbpe_mm']:>7.0f} mm{r['r_mpkpe']:>12.0f} mm",
     f"joint angle              {d['e_mpjpe_rad']:>7.3f} rad{jabs:>11.3f} rad",
@@ -32,4 +33,7 @@ print("|".join([
     f"{pf(r['bm_success']):>14}",
     f"stays within 0.5 m       {pf(d['success_rate_polysim'] > 0.5):>10}"
     f"{pf(r['poly_success']):>14}",
-]))
+]
+a, b = rows[0].index(" mm"), rows[0].rindex(" mm")
+hdr = (" " * (a + 3 - len("Isaac Lab")) + "Isaac Lab").ljust(b + 3 - len("MuJoCo")) + "MuJoCo"
+print("|".join([hdr] + rows))
