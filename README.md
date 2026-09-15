@@ -187,25 +187,25 @@ sim과 sim-dr을 나눠 보고하는 방식과 같습니다.
 
 | 시퀀스 | 발 오차 (cm) | 완주율 | E_g-mpbpe (mm) | E_mpbpe (mm) | E_mpjpe (rad) |
 | --- | --- | --- | --- | --- | --- |
-| walk2_subject4 | 0.70 | 99% | 90 | 40 | 0.085 |
-| aiming1_subject1 | 0.74 | 100% | 89 | 35 | 0.080 |
-| walk1_subject1 | 0.80 | 99% | 80 | 34 | 0.066 |
 | walk4_subject1 | 0.88 | 100% | 60 | 37 | 0.062 |
-| walk3_subject4 | 0.88 | 0% | - | - | - |
-| walk2_subject1 | 0.91 | 100% | 114 | 43 | 0.101 |
-| obstacles2_subject1 | 0.93 | 0% | - | - | - |
-| dance2_subject3 | 0.94 | 100% | 103 | 45 | 0.104 |
 | walk3_subject2 | 0.99 | 100% | 79 | 34 | 0.071 |
-| walk3_subject1 | 1.01 | 0% | - | - | - |
 | walk1_subject2 | 1.05 | 100% | 79 | 34 | 0.066 |
-| obstacles1_subject1 | 1.07 | 미학습 | | | |
-| jumps1_subject1 | 1.10 | 98% | 151 | 42 | 0.104 |
 | walk3_subject5 | 1.11 | 100% | 85 | 36 | 0.082 |
-| run2_subject4 | 1.12 | 99% | 178 | 47 | 0.111 |
+| aiming1_subject1 | 0.74 | 100% | 89 | 35 | 0.080 |
 | walk1_subject5 | 1.12 | 100% | 90 | 34 | 0.069 |
-| walk2_subject3 | 1.15 | 96% | 129 | 50 | 0.104 |
+| dance2_subject3 | 0.94 | 100% | 103 | 45 | 0.104 |
+| walk2_subject1 | 0.91 | 100% | 114 | 43 | 0.101 |
+| walk1_subject1 | 0.80 | 99% | 80 | 34 | 0.066 |
+| walk2_subject4 | 0.70 | 99% | 90 | 40 | 0.085 |
+| run2_subject4 | 1.12 | 99% | 178 | 47 | 0.111 |
+| jumps1_subject1 | 1.10 | 98% | 151 | 42 | 0.104 |
 | obstacles3_subject3 | 1.19 | 98% | 162 | 54 | 0.101 |
-| obstacles4_subject2 | 1.19 | 미학습 | | | |
+| walk2_subject3 | 1.15 | 96% | 129 | 50 | 0.104 |
+| walk3_subject4 | 0.88 | 0% | - | - | - |
+| obstacles2_subject1 | 0.93 | 0% | - | - | - |
+| walk3_subject1 | 1.01 | 0% | - | - | - |
+| obstacles1_subject1 | 1.07 | 미학습 |  |  |  |
+| obstacles4_subject2 | 1.19 | 미학습 |  |  |  |
 
 완주율이 0%인 셋은 완주한 롤아웃이 없어 세 지표가 정의되지 않습니다. 대신
 평균 추적 길이와 전체 롤아웃 기준 E_g-mpbpe를 적으면 이렇습니다.
