@@ -9,6 +9,8 @@ English documentation: [README.en.md](README.en.md)
 
 학습된 정책과 평가 결과: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
 
+영상 전체: [YouTube 재생목록](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+
 ---
 
 ## 파이프라인

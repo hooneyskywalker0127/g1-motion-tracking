@@ -8,6 +8,8 @@ Simulation only. Real-robot deployment is out of scope for now.
 
 Trained policies and evaluation results: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
 
+All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+
 ---
 
 ## Pipeline
