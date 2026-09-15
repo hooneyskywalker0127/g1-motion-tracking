@@ -217,6 +217,154 @@ Foot error ranking did not predict policy performance. The three sequences at
 high end (1.19 cm) completes 98% of rollouts. walk4_subject1, which has the
 lowest E_g-mpbpe at 60 mm, is at 0.88 cm rather than the top of the list.
 
+### The three that never finish are a reference problem, not a training one
+
+Re-measuring the references with `src/motion_defect_census.py` separates them
+at a glance.
+
+| sequence | ground penetration | max penetration | peak foot slip | airborne |
+| --- | --- | --- | --- | --- |
+| obstacles2_subject1 | 0.9% | 4.2 cm | 0.35 m/s | 26.8% |
+| walk3_subject1 | 6.0% | 7.6 cm | 1.59 m/s | 0.2% |
+| walk3_subject4 | 4.3% | 4.8 cm | 1.08 m/s | 0.2% |
+| walk1_subject1 (completes) | 0.0% | 0.4 cm | 0.90 m/s | 0.0% |
+
+`obstacles2_subject1` spends 26.8% of its frames airborne: the actor is
+climbing stairs and the training ground is flat, so there is nothing for the
+feet to land on. The other two push their feet into the floor, up to 7.6 cm.
+The sequence that completes penetrates 0% of the time.
+
+The policy is not failing to follow the reference. The reference is not
+reachable. Selection looked at foot error alone, and on that ranking these
+three sit mid-range, so they passed. Ground penetration and airborne fraction
+were never checked.
+
+### The work that reports 96-100% on the same material does two more things
+
+Retargeting Matters([arXiv:2510.02252](https://arxiv.org/abs/2510.02252))
+reports 96-100% over 100 sim rollouts on the same LAFAN1, the same G1 and the
+same BeyondMimic. The paper states both differences directly.
+
+It leaves the problem motions out to begin with:
+
+> We do not include motions with complex interaction with the environment,
+> such as crawling or getting up from the floor
+
+The three sequences that never finish here are exactly that category.
+
+And it measures penetration and corrects for it:
+
+> We fix this by running forward kinematics on the retargeted sequences,
+> storing the minimum body height at each frame, and then offsetting the
+> entire motion by the mean minimum body height
+
+Neither was done here. The gap sits in stage 3, not in the policy.
+
+---
+
+## sim-to-sim — does it survive a second simulator
+
+A policy that only works in the simulator it was trained in is not evidence of
+anything. The same onnx actor was loaded into MuJoCo with no retraining and no
+fine-tuning, and all seventeen sequences were replayed for the full clip length.
+
+![sim2sim](docs/sim2sim.gif)
+
+Six seconds of walk2_subject4. Isaac Lab on the left, the same policy in MuJoCo
+on the right. Both panels start and end on the same instant.
+
+### There is no single pass criterion
+
+Criteria differ by lineage and they measure different things, so the same
+rollouts were scored under both. `src/score_standard.py` does this.
+
+BeyondMimic scores by termination (`tracking_env_cfg.py` 255-275). The episode
+ends the moment any of the three fires.
+
+| condition | quantity | threshold |
+| --- | --- | --- |
+| anchor_pos | \|ref_anchor_z − rob_anchor_z\| | 0.25 |
+| anchor_ori | \|ref_gravity_z − rob_gravity_z\| | 0.8 |
+| ee_body_pos | ankles and wrists, \|ref_rel_z − rob_z\| | 0.25 |
+
+PolySim([arXiv:2510.01708](https://arxiv.org/abs/2510.01708)) counts a rollout
+as failed once the mean global body position error crosses 0.5 m.
+
+All three termination conditions look at z alone. None of them sees horizontal
+drift, and PolySim's threshold is built to catch exactly that. The two criteria
+are not measuring the same thing.
+
+| criterion | passes |
+| --- | --- |
+| BeyondMimic termination | 14 / 17 |
+| PolySim 0.5 m | 11 / 17 |
+
+`jumps1_subject1`, `run2_subject4` and `walk2_subject3` separate the two. They
+never fall over, but each leaves the reference by more than 0.5 m at some point.
+
+One caveat. PolySim's text says mean body position error over 0.5 m, but the
+released code tests whether any single body exceeds a curriculum threshold
+(1.5 m by default) and has that check disabled in the default configuration.
+The numbers above implement the text.
+
+### Posture crosses over, position does not
+
+Over all 13,064 frames of `walk1_subject1`, mean joint error is 0.064 rad in
+Isaac and 0.065 rad in MuJoCo, and the two references agree frame by frame to
+0.000000.
+
+What does not cross over is position. About 72% of the global error is root
+horizontal drift, and the drift is a heading error rather than a step-length
+deficit: the robot walks the right distance in a slightly wrong direction and
+the gap opens with time. The same drift appears in Isaac, so it is not a MuJoCo
+artefact. Re-anchoring the reference to the robot's torso and removing yaw
+drops the mean from 382.8 mm to 87.3 mm.
+
+### The six that do not complete
+
+Eleven of seventeen complete the full clip in MuJoCo. Three of the six failures
+are the reference defects described above. Two leave the threshold for 0.7% and
+2.5% of their frames and return. One was never trained to convergence.
+
+A single deterministic rollout per sequence is thin, so each was rerun with ten
+seeds of initial joint and root noise, giving 170 rollouts. Fourteen agree with
+the single-seed result; three do not. `jumps1_subject1` reads 0% on one seed
+and 30% over ten.
+
+### Under matched perturbation
+
+Pushes drawn from the same distribution at the same 1 to 3 s interval give
+0.182 in MuJoCo and 0.202 in Isaac, correlated at 0.965. Scoring the same
+MuJoCo rollouts under Isaac's own termination criterion instead gives 0.769.
+Which criterion you pick moves the number about four times as much as which
+simulator you run.
+
+Matching the perturbation took care. Isaac adds the push to `root_vel_w`, a
+world-frame 6D vector, while MuJoCo's free joint keeps linear velocity in world
+and angular velocity body-local. Adding the same vector to both compares
+nothing; the angular part has to be rotated into the body frame first.
+
+### Definitions had to be matched too
+
+The relative-error columns were not the same quantity at first. Isaac
+re-anchors the reference to `torso_link` and removes yaw
+(`commands.py` 284-294); the MuJoCo side was subtracting each pelvis and
+leaving rotation alone. On the same rollout that reads 22.1 mm one way and
+30.5 mm the other.
+
+### Code
+
+| file | what it does |
+| --- | --- |
+| `src/sim2sim.py` | runs the onnx actor in MuJoCo |
+| `src/sim2sim_polysim.py` | the five PolySim metrics |
+| `src/score_standard.py` | scores one rollout set under both criteria |
+| `src/sim2sim_trials.py` | N-seed trials per sequence |
+| `src/sim2sim_push.py` | matched perturbation on both sides |
+| `src/horizon_trials.py` | keeps the full error time series per seed |
+| `src/sim2sim_full_table.py` | builds the table |
+| `scripts/make_video_pair.sh` | renders both panels on the same instant |
+
 ---
 
 ## Layout
@@ -306,12 +454,19 @@ policy trained on them.
 
 ## Status
 
-Stages 1 to 3 are done. Stage 4 has its first policy, walk2_subject4, trained;
-the remaining 18 sequences are training in order. Per-stage detail is above.
+Stages 1 to 3 are done. Stage 4 has 17 of the 19 selected sequences trained to
+30,000 iterations and evaluated over 100 rollouts. The two left are
+obstacles1_subject1 and obstacles4_subject2.
 
 The evaluation code exists now. The BeyondMimic repository ships `train.py` and
 `play.py` but nothing that counts whether a policy carries a reference to the
 end, so completion rate and tracking error are measured here against the GMR
 paper's definitions.
 
-What is left is finishing the 19 training runs and filling in the table above.
+sim-to-sim is finished for all 17 at full clip length, with a comparison video
+for each. Results are above.
+
+Currently running is one motion from the ASAP dataset, kobe. The 17 above come
+from LAFAN1, which cannot be placed next to PolySim's table directly. The same
+motion under the same metrics is what puts a number beside their Table III
+(success 0.100, E_g-mpjpe 272.6 mm going from IsaacSim_DR to MuJoCo).

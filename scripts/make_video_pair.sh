@@ -41,42 +41,33 @@ CKPT=$(ls -1 "$WBT/logs/rsl_rl/g1_flat/$RUN"/model_*.pt | sed 's/.*model_//;s/\.
    env.commands.motion.debug_vis=false env.scene.contact_forces.debug_vis=false) 2>&1 \
    | grep -E "start at motion frame|Wrote" || true
 
-# 자막 수치. Isaac 은 평가 json, MuJoCo 는 전체 길이 롤아웃에서 읽는다.
-IFS='|' read -r M1 M2 <<< "$("$PY" -c "
-import json, pathlib, numpy as np, sys
-sys.path.insert(0,'$R/src')
-from sim2sim_polysim import score
-p = pathlib.Path('$R/outputs/eval_fixed/$SEQ.json')
-if p.exists():
-    d = json.load(open(p))
-    a = (f\"completion {d['success_rate']*100:.0f}% over {d['num_envs']} rollouts\"
-         f\"   E_g-mpbpe {d['e_g_mpbpe_mm_all']:.0f} mm\")
-else:
-    a = 'not evaluated yet'
-q = pathlib.Path('$R/outputs/sim2sim_full/$SEQ.npz')
-if q.exists():
-    r = score(dict(np.load(q)))
-    b = (f\"E_g-mpjpe {r['e_g_mpjpe']:.0f} mm   E_mpjpe {r['e_mpjpe']:.0f} mm\"
-         f\"   over 0.5 m for {r['over_frac']*100:.1f}% of the rollout\")
-else:
-    b = ' '
-print(a + '|' + b)
-")"
+# 자막. 양쪽을 같은 정의로 내는 일은 src/caption_pair.py 가 한다.
+IFS='|' read -r L1 L2 L3 L4 L5 <<< "$("$PY" "$R/src/caption_pair.py" "$SEQ")"
 
 T1="Isaac Lab   trained policy (30,000 iterations)"
 T2="MuJoCo   same policy, zero-shot"
+HD="                                     Isaac Lab       MuJoCo"
+
+# 표 다섯 줄은 등폭 글꼴이라야 열이 맞는다.
+MONO=/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf
+[ -f "$MONO" ] || MONO=$FONT
+ROW() { echo "drawtext=fontfile=$MONO:expansion=none:text='$1':fontcolor=$2:fontsize=22:x=(w-text_w)/2:y=h-$3"; }
 
 ffmpeg -y -hide_banner -loglevel error \
   -i "$OUT/${SEQ}_isaac.mp4" -i "$OUT/${SEQ}_mujoco.mp4" \
   -filter_complex "\
 [0:v]setpts=PTS-STARTPTS,scale=1280:720[l];[1:v]setpts=PTS-STARTPTS,scale=1280:720[r];\
 [l][r]hstack=inputs=2[v];\
-[v]pad=iw:ih+250:0:100:color=0x101010[p];\
+[v]pad=iw:ih+300:0:100:color=0x101010[p];\
 [p]drawtext=fontfile=$FONT:expansion=none:text='$T1':fontcolor=white:fontsize=34:x=(1280-text_w)/2:y=30,\
 drawtext=fontfile=$FONT:expansion=none:text='$T2':fontcolor=white:fontsize=34:x=1280+(1280-text_w)/2:y=30,\
-drawtext=fontfile=$FONT:expansion=none:text='$SEQ':fontcolor=0x9fd0ff:fontsize=26:x=(w-text_w)/2:y=h-118,\
-drawtext=fontfile=$FONT:expansion=none:text='Isaac    $M1':fontcolor=0xd0d0d0:fontsize=26:x=(w-text_w)/2:y=h-80,\
-drawtext=fontfile=$FONT:expansion=none:text='MuJoCo   $M2':fontcolor=0xd0d0d0:fontsize=26:x=(w-text_w)/2:y=h-42[out]" \
+drawtext=fontfile=$FONT:expansion=none:text='$SEQ':fontcolor=0x9fd0ff:fontsize=26:x=(w-text_w)/2:y=h-196,\
+$(ROW "$HD" 0x808080 162),\
+$(ROW "$L1" 0xd0d0d0 132),\
+$(ROW "$L2" 0xd0d0d0 104),\
+$(ROW "$L3" 0xd0d0d0 76),\
+$(ROW "$L4" 0xd0d0d0 48),\
+$(ROW "$L5" 0xd0d0d0 20)[out]" \
   -map "[out]" -c:v libx264 -preset veryfast -pix_fmt yuv420p -crf 20 \
   "$OUT/${SEQ}_compare.mp4"
 
