@@ -452,6 +452,41 @@ that artifacts left in retargeted trajectories — foot sliding, self-penetratio
 physically infeasible poses — measurably reduce the robustness of the tracking
 policy trained on them.
 
+### kobe — putting a number beside PolySim's table
+
+The 17 above come from LAFAN1 and cannot be placed against PolySim's table
+directly. The same motion under the same metrics is what makes them
+comparable. One motion from the ASAP dataset, kobe, was converted with
+`src/asap_to_csv.py` and run through the same pipeline: 206 frames, 4.1 s.
+
+| | PolySim Table III | here |
+| --- | --- | --- |
+| setting | IsaacSim_DR → MuJoCo | Isaac Lab → MuJoCo |
+| MuJoCo success | 0.100 (10 trials) | 1.000 (10 trials) |
+| E_g-mpjpe | 272.6 mm | 100.4 mm |
+
+Scored under both criteria used here:
+
+| | Isaac Lab | MuJoCo |
+| --- | --- | --- |
+| global body error | 94.9 mm | 94.5 mm |
+| local pose, re-anchored | 44.5 mm | 43.8 mm |
+| joint angle | 0.070 rad | 0.069 rad |
+| survives termination | pass | pass |
+| stays within 0.5 m | pass | pass |
+
+Global error goes from 94.9 mm to 94.5 mm. There is essentially no transfer
+loss.
+
+It took three training runs. The first two never converged: the csv was
+written in Isaac joint order rather than URDF order, which put
+`error_joint_pos` at 2.44 rad, and the reference floated above the ground.
+
+The comparison carries conditions. The trainer, the window length and the
+sample size all differ from the paper, and PolySim's success test differs
+between its text and its released code. What is matched is the motion and the
+metric definitions.
+
 ## What is left
 
 The order follows the dependencies: 1 and 2 change what 3 operates on.
@@ -469,7 +504,6 @@ The order follows the dependencies: 1 and 2 change what 3 operates on.
 4. Score the Isaac side under both criteria. The two-criteria table is filled in
    for MuJoCo only; `scripts/gt_dump_all.sh` dumps the per-frame global error for
    all 17 and completes the other two cells.
-5. Put the kobe comparison in a table. The numbers exist.
 
 ## Status
 
