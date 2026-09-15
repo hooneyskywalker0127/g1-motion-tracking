@@ -34,6 +34,9 @@ rows = [
     f"stays within 0.5 m       {pf(d['success_rate_polysim'] > 0.5):>10}"
     f"{pf(r['poly_success']):>14}",
 ]
+# ffmpeg drawtext 가 앞쪽 공백을 버린다. 헤더를 공백으로 들여쓰면 그 줄만
+# 짧아진 채로 따로 가운데 정렬돼 왼쪽으로 당겨진다. 첫 글자를 글자로 채운다.
 a, b = rows[0].index(" mm"), rows[0].rindex(" mm")
-hdr = (" " * (a + 3 - len("Isaac Lab")) + "Isaac Lab").ljust(b + 3 - len("MuJoCo")) + "MuJoCo"
+hdr = "metric".ljust(a + 3 - len("Isaac Lab")) + "Isaac Lab"
+hdr = hdr.ljust(b + 3 - len("MuJoCo")) + "MuJoCo"
 print("|".join([hdr] + rows))
