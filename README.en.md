@@ -388,15 +388,40 @@ are undefined.
 | `obstacles2_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
 | `walk3_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
 
-That the two criteria measure different things shows up in `jumps1_subject1` and
-`run2_subject4`. Jumping and running: local tracking never breaks, but the robot
-drifts more than 0.5 m globally. This is why one criterion is not enough.
+The seventeen fall into four groups by motion type.
 
-Three of the 17 are zero under both. `obstacles2_subject1` survives only 8.6 % of
-the clip and is an unconverged policy; `walk3_subject1` and `walk3_subject4` get
-77-87 % of the way through and fail near the end. Retargeting Matters reports
-96-100 % on the same LAFAN1, G1 and BeyondMimic, so these three are a
-termination-condition and motion-selection problem, not a transfer problem.
+The ten walking, aiming and dance clips (`walk4_subject1` through
+`walk2_subject4`) hold S_bm at 0.94 or better on both sides and S_poly at 0.86 or
+better, with 61-115 mm global and 31-45 mm local error. All four metrics sit
+close together across the two simulators.
+
+Running and jumping (`run2_subject4`, `jumps1_subject1`) hold S_bm at 0.73-0.98
+while S_poly drops to 0.00-0.14. They do not fail by falling, they fail by
+drifting. Their global error of 155-181 mm is also the largest of the seventeen.
+The faster the motion, the more heading error accumulates over a long clip. One
+criterion alone hides this entirely.
+
+`obstacles3_subject3` and `walk2_subject3` go the other way on S_bm: 0.58 and
+0.64 in Isaac against 0.80 and 0.76 in MuJoCo. Something in the Isaac run is
+harsher, and it is not transfer getting worse. `walk2_subject3` is the exception
+worth naming — its S_poly falls from 0.45 to 0.00, the one cell where MuJoCo is
+clearly worse.
+
+The three with no completed rollout have no error to report.
+`obstacles2_subject1` survives 8.6 % of its clip and is unconverged;
+`walk3_subject1` and `walk3_subject4` reach 77-87 % and fail near the end, where
+the LAFAN1 actor sits or lies down and the selection criterion never looked.
+Retargeting Matters reports 96-100 % on the same LAFAN1, G1 and BeyondMimic, so
+these three are a training and motion-selection problem, not a transfer problem.
+
+Three things run through all of it. MuJoCo is worse than Isaac in only three
+cells out of the fourteen that report error — global on `walk3_subject5` and
+`walk2_subject3`, local on `walk3_subject5` — and equal or better everywhere
+else. Error magnitude is set by motion difficulty rather than by simulator:
+61-115 mm for walking, 104-166 mm for obstacles and dance, 155-181 mm for
+jumping and running. And failure splits in two: a low S_bm means the robot fell,
+which is a training and selection problem, while a low S_poly alone means
+heading error accumulated over a long clip.
 
 The two scorers were checked against each other first. Isaac's env 0 rollout was
 dumped in full, rescored with the MuJoCo scorer, and compared against the online
