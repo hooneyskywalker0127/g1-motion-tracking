@@ -334,8 +334,16 @@ had never seen. The numbers do not drop.
 | global body error | 108.3 mm | 101.3 mm |
 | joint angle | 0.594 rad | 0.593 rad |
 
-Averaged over 17 sequences, 100 runs each. The rest of this section is how those
-numbers were produced.
+Averaged over 17 sequences, 100 runs each.
+
+![sim2sim dance](docs/sim2sim_dance.gif)
+
+The most dynamic five seconds of `dance2_subject3`. Isaac Lab on the left, the
+same policy dropped into MuJoCo on the right. This sequence is where the two
+simulators agree most closely — 0.99 against 1.00 completion, 104.4 against
+104.3 mm global error.
+
+The rest of this section is how those numbers were produced.
 
 Putting two simulators side by side requires the two columns to be the same
 quantity. Four things were matched.
