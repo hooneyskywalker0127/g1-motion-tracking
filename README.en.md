@@ -589,8 +589,19 @@ The full 4.1 s. Isaac Lab on the left, MuJoCo on the right. Over 100 MuJoCo
 trials: BeyondMimic success 1.000, PolySim success 0.990, global body error
 128.0 mm. No transfer loss here either.
 
-One clip is not a sample. What it supports is that transfer holds outside
-LAFAN1, and nothing beyond that.
+Stated plainly to avoid a misreading: this clip runs on a policy trained for
+kobe alone. The policies trained on the seventeen did not track it. This
+pipeline is one policy per motion, so kobe got its own 30,000 iterations. What
+this shows is transfer, not generalisation.
+
+So the clip supports exactly one claim: that transfer working is not a property
+of LAFAN1. A four-second, fast motion from a different dataset behaves the same
+way. One clip is not a sample, and nothing beyond that is claimed.
+
+Where this clip becomes worth more is later. Once several motions are merged
+into a single policy, kobe can be held out of training and used to measure
+generalisation — a different dataset, a motion type absent from training, and a
+short fast segment all put it clearly outside the training distribution.
 
 It took three training runs. The first two never converged: the csv was
 written in Isaac joint order rather than URDF order, which put
