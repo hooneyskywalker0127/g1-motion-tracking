@@ -330,10 +330,10 @@ had never seen. The numbers do not drop.
 
 | metric | Isaac | MuJoCo | over |
 | --- | --- | --- | --- |
-| completion rate | 0.765 | 0.775 | 17 sequences |
-| completion rate (excluding the three at zero) | 0.929 | 0.941 | 14 sequences |
-| global body position error | 108.3 mm | 101.3 mm | 14 sequences |
-| joint angle error | 0.594 rad | 0.593 rad | 14 sequences |
+| Success rate | 0.765 | 0.775 | 17 sequences |
+| Success rate (excluding the three at zero) | 0.929 | 0.941 | 14 sequences |
+| E_g-mpbpe | 108.3 mm | 101.3 mm | 14 sequences |
+| E_mpjpe | 0.594 rad | 0.593 rad | 14 sequences |
 
 100 runs each. Error is averaged over completing runs only, so the three that
 complete none (`obstacles2_subject1`, `walk3_subject1`, `walk3_subject4`) drop
