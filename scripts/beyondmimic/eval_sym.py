@@ -222,6 +222,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
     dump_ref, dump_rob = [], []   # env 0 의 프레임별 관절각을 그대로 남긴다
     # 프레임별·환경별 다섯 지표. 창 길이를 바꿔가며 다시 셀 수 있어야 한다.
     dump_g, dump_r, dump_j, dump_jv, dump_alive = [], [], [], [], []
+    # 종료 조건 셋을 따로 남긴다. OR 만 남기면 어느 것이 걸렸는지 알 수 없다.
+    dump_bpos, dump_bori, dump_bee = [], [], []
     # env 0 의 바디 자세 전체. MuJoCo 채점기와의 대조용이다.
     xref_bp, xref_bq, xrob_bp, xrob_bq, xref_jv, xrob_jv = [], [], [], [], [], []
     # PolySim 기준: 전역 바디 위치 오차 평균이 한 번이라도 0.5 m 를 넘으면 실패.
@@ -287,6 +289,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
             dump_j.append(jnt.cpu().numpy().astype("float16"))
             dump_jv.append(jvel.cpu().numpy().astype("float16"))
             dump_alive.append(alive.cpu().numpy().copy())
+            dump_bpos.append(bad_pos.cpu().numpy().copy())
+            dump_bori.append(bad_ori.cpu().numpy().copy())
+            dump_bee.append(bad_ee.cpu().numpy().copy())
             dump_ref.append(ref_joint_pos[0].cpu().numpy().copy())
             dump_rob.append(robot_joint_pos[0].cpu().numpy().copy())
             # env 0 만 바디 자세를 통째로 남긴다. MuJoCo 쪽 score_standard.py 로
@@ -306,7 +311,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
     _np.savez(base + "_dump.npz",
               ref_joint_pos=_np.array(dump_ref), rob_joint_pos=_np.array(dump_rob),
               g_t=_np.array(dump_g), r_t=_np.array(dump_r), j_t=_np.array(dump_j),
-              jv_t=_np.array(dump_jv), alive_t=_np.array(dump_alive))
+              jv_t=_np.array(dump_jv), alive_t=_np.array(dump_alive),
+              bad_pos_t=_np.array(dump_bpos), bad_ori_t=_np.array(dump_bori),
+              bad_ee_t=_np.array(dump_bee))
     # env 0 의 롤아웃을 MuJoCo 쪽 npz 와 같은 키 이름으로 남긴다.
     # src/score_standard.py 의 score() 를 그대로 먹일 수 있다.
     _np.savez(base + "_env0.npz",

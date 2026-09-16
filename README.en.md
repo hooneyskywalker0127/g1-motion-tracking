@@ -4,6 +4,13 @@ Human mocap retargeting and whole-body motion tracking pipeline for the Unitree 
 
 Simulation only. Real-robot deployment is out of scope for now.
 
+Why it exists: while building a swarm humanoid simulation, GEAR-SONIC from
+NVIDIA's [GR00T Whole-Body Control](https://github.com/NVlabs/GR00T-WholeBodyControl)
+was used to drive the G1. Using a controller and building one teach different
+things, so this pipeline was built end to end to build whole-body control
+directly. SONIC also tracks a reference motion, so this is the same problem
+solved by a different hand.
+
 한국어 문서는 [README.md](README.md)를 참고하십시오.
 
 Trained policies and evaluation results: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)

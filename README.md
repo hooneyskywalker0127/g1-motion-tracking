@@ -5,6 +5,13 @@
 
 현재 범위는 시뮬레이션까지이며, 실제 로봇 배포는 포함하지 않습니다.
 
+시작한 이유는 이렇습니다. 군집 휴머노이드 시뮬레이션을 구성하면서 NVIDIA의
+[GR00T Whole-Body Control](https://github.com/NVlabs/GR00T-WholeBodyControl)에
+들어 있는 GEAR-SONIC을 가져다 G1을 제어했습니다. 쓰는 것과 만드는 것은 아는
+것이 다릅니다. 전신 제어를 직접 만들어 보려고 이 파이프라인을 처음부터 끝까지
+구축했습니다. SONIC도 레퍼런스 모션을 따라가는 계열이라 같은 문제를 다른 손으로
+푼 셈입니다.
+
 English documentation: [README.en.md](README.en.md)
 
 학습된 정책과 평가 결과: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
