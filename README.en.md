@@ -354,15 +354,32 @@ solver differ. The sentence this supports is that there is no transfer loss, and
 no more than that. The comparable published figure is PHUMA appendix D.3, which
 reports 90.5 % and 93.2 % retention going from Isaac Gym to MuJoCo.
 
-That the two criteria measure different things shows up directly.
+Per sequence, ordered by completion rate to match the training results table
+above. Errors are in mm; the three with no completed rollout are undefined.
 
-| sequence | BeyondMimic | PolySim |
-| --- | --- | --- |
-| jumps1_subject1 | 0.98 / 0.97 | 0.05 / 0.14 |
-| run2_subject4 | 0.83 / 0.73 | 0.00 / 0.00 |
+| sequence | S_bm Isaac | S_bm MuJoCo | S_poly Isaac | S_poly MuJoCo | global Isaac | global MuJoCo | local Isaac | local MuJoCo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `walk4_subject1` | 1.00 | 1.00 | 0.99 | 0.96 | 61.1 | 55.0 | 36.8 | 33.9 |
+| `walk3_subject2` | 1.00 | 1.00 | 1.00 | 0.99 | 83.2 | 70.3 | 34.5 | 31.1 |
+| `walk1_subject2` | 1.00 | 1.00 | 0.99 | 1.00 | 79.8 | 73.7 | 34.6 | 31.1 |
+| `walk3_subject5` | 1.00 | 0.99 | 0.88 | 0.88 | 86.5 | 88.8 | 35.7 | 37.0 |
+| `aiming1_subject1` | 0.99 | 1.00 | 0.93 | 0.86 | 89.7 | 74.2 | 35.6 | 32.4 |
+| `walk1_subject5` | 1.00 | 0.94 | 0.99 | 0.86 | 91.2 | 86.2 | 33.9 | 31.5 |
+| `dance2_subject3` | 0.99 | 1.00 | 0.99 | 1.00 | 104.4 | 104.3 | 45.4 | 42.3 |
+| `walk2_subject1` | 1.00 | 1.00 | 0.91 | 0.95 | 115.2 | 101.7 | 43.2 | 41.0 |
+| `walk1_subject1` | 1.00 | 1.00 | 0.96 | 0.99 | 77.7 | 69.3 | 33.9 | 30.6 |
+| `walk2_subject4` | 0.99 | 0.99 | 1.00 | 0.98 | 91.7 | 77.6 | 40.3 | 36.7 |
+| `run2_subject4` | 0.83 | 0.73 | 0.00 | 0.00 | 181.1 | 174.9 | 47.0 | 44.5 |
+| `jumps1_subject1` | 0.98 | 0.97 | 0.05 | 0.14 | 155.3 | 143.3 | 42.6 | 40.6 |
+| `obstacles3_subject3` | 0.58 | 0.80 | 0.62 | 0.75 | 165.6 | 160.1 | 54.7 | 51.1 |
+| `walk2_subject3` | 0.64 | 0.76 | 0.45 | 0.00 | 134.0 | 138.8 | 50.2 | 48.8 |
+| `walk3_subject4` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
+| `obstacles2_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
+| `walk3_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
 
-Jumping and running. Local tracking never breaks, but the robot drifts more than
-0.5 m globally. This is why one criterion is not enough.
+That the two criteria measure different things shows up in `jumps1_subject1` and
+`run2_subject4`. Jumping and running: local tracking never breaks, but the robot
+drifts more than 0.5 m globally. This is why one criterion is not enough.
 
 Three of the 17 are zero under both. `obstacles2_subject1` survives only 8.6 % of
 the clip and is an unconverged policy; `walk3_subject1` and `walk3_subject4` get
