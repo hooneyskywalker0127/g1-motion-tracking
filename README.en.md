@@ -325,6 +325,18 @@ The numbers below implement the text.
 
 ### Is anything lost in transfer
 
+The same policy was run in Isaac, where it was trained, and in MuJoCo, which it
+had never seen. The numbers do not drop.
+
+| | Isaac | MuJoCo |
+| --- | --- | --- |
+| completed the clip | 0.765 | 0.775 |
+| global body error | 108.3 mm | 101.3 mm |
+| joint angle | 0.594 rad | 0.593 rad |
+
+Averaged over 17 sequences, 100 runs each. The rest of this section is how those
+numbers were produced.
+
 Putting two simulators side by side requires the two columns to be the same
 quantity. Four things were matched.
 

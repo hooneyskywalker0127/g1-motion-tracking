@@ -72,52 +72,57 @@ def perturb(sim, rng):
     d.qpos[sim.qadr] = np.clip(q, lim[:, 0], lim[:, 1])
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("seqs", nargs="*")
-ap.add_argument("--n", type=int, default=100)
-ap.add_argument("--seconds", type=float, default=0.0, help="0 이면 모션 전체 길이")
-ap.add_argument("--no_perturb", action="store_true", help="교란 없이 결정론 1회 (sim 열)")
-ap.add_argument("--motion_dir", default="/home/sehoon/motions_fixed")
-ap.add_argument("--out", default="outputs/sym/mujoco_trials.npz")
-a = ap.parse_args()
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("seqs", nargs="*")
+    ap.add_argument("--n", type=int, default=100)
+    ap.add_argument("--seconds", type=float, default=0.0, help="0 이면 모션 전체 길이")
+    ap.add_argument("--no_perturb", action="store_true", help="교란 없이 결정론 1회 (sim 열)")
+    ap.add_argument("--motion_dir", default="/home/sehoon/motions_fixed")
+    ap.add_argument("--out", default="outputs/sym/mujoco_trials.npz")
+    a = ap.parse_args()
 
-seqs = a.seqs or sorted(os.path.basename(f)[:-4] for f in
-                        glob.glob(f"{a.motion_dir}/*.npz"))
-store = {}
-for seq in seqs:
-    m = f"{a.motion_dir}/{seq}.npz"
-    if not os.path.exists(m):
-        print(f"{seq} 모션 없음", flush=True); continue
-    sim = Sim2Sim(seq, motion_npz=m)
-    nsteps = (int(a.seconds / 0.02) if a.seconds
-              else len(np.load(m)["joint_pos"]) - 1)
-    orig = sim.reset_to_reference
-    rows = []
-    n = 1 if a.no_perturb else a.n
-    for s in range(n):
-        rng = np.random.default_rng(s)
+    seqs = a.seqs or sorted(os.path.basename(f)[:-4] for f in
+                            glob.glob(f"{a.motion_dir}/*.npz"))
+    store = {}
+    for seq in seqs:
+        m = f"{a.motion_dir}/{seq}.npz"
+        if not os.path.exists(m):
+            print(f"{seq} 모션 없음", flush=True); continue
+        sim = Sim2Sim(seq, motion_npz=m)
+        nsteps = (int(a.seconds / 0.02) if a.seconds
+                  else len(np.load(m)["joint_pos"]) - 1)
+        orig = sim.reset_to_reference
+        rows = []
+        n = 1 if a.no_perturb else a.n
+        for s in range(n):
+            rng = np.random.default_rng(s)
 
-        def reset(step, _o=orig, _r=rng):
-            _o(step)
-            if not a.no_perturb:
-                perturb(sim, _r)
+            def reset(step, _o=orig, _r=rng):
+                _o(step)
+                if not a.no_perturb:
+                    perturb(sim, _r)
 
-        sim.reset_to_reference = reset
-        sim.last_action = np.zeros_like(sim.last_action)
-        r = score(sim.run(0, nsteps, None))
-        rows.append([r["bm_success"], r["poly_success"], r["mpkpe"], r["r_mpkpe"],
-                     r["jl2"], r["jvel"], r["alive_frames"],
-                     r["mpkpe_full"], r["r_mpkpe_full"], r["jl2_full"]])
-    A = np.array(rows, float)
-    store[seq] = A
-    okm = A[:, 0].astype(bool)
-    f = lambda c: A[okm, c].mean() if okm.any() else float("nan")
-    print(f"{seq:<22} S_bm {A[:,0].mean():.3f}  S_poly {A[:,1].mean():.3f}  "
-          f"MPKPE {f(2):7.1f}  R-MPKPE {f(3):6.1f}  E_joint {f(4):.3f}", flush=True)
+            sim.reset_to_reference = reset
+            sim.last_action = np.zeros_like(sim.last_action)
+            r = score(sim.run(0, nsteps, None))
+            rows.append([r["bm_success"], r["poly_success"], r["mpkpe"], r["r_mpkpe"],
+                         r["jl2"], r["jvel"], r["alive_frames"],
+                         r["mpkpe_full"], r["r_mpkpe_full"], r["jl2_full"]])
+        A = np.array(rows, float)
+        store[seq] = A
+        okm = A[:, 0].astype(bool)
+        f = lambda c: A[okm, c].mean() if okm.any() else float("nan")
+        print(f"{seq:<22} S_bm {A[:,0].mean():.3f}  S_poly {A[:,1].mean():.3f}  "
+              f"MPKPE {f(2):7.1f}  R-MPKPE {f(3):6.1f}  E_joint {f(4):.3f}", flush=True)
 
-if store:
-    os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    np.savez(a.out, **store)
-    A = np.concatenate(list(store.values()))
-    print(f"\n{len(store)}개 시퀀스 · 시행 {n}회 · S_bm {A[:,0].mean():.3f}"
-          f" · S_poly {A[:,1].mean():.3f} · {a.out}")
+    if store:
+        os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
+        np.savez(a.out, **store)
+        A = np.concatenate(list(store.values()))
+        print(f"\n{len(store)}개 시퀀스 · 시행 {n}회 · S_bm {A[:,0].mean():.3f}"
+              f" · S_poly {A[:,1].mean():.3f} · {a.out}")
+
+
+if __name__ == "__main__":
+    main()
