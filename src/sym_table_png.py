@@ -16,13 +16,22 @@ KFONT = FontProperties(family="Noto Sans CJK JP")
 MONO = FontProperties(family="Noto Sans Mono")
 C_BM, C_POLY, C_MPKPE, C_RMPKPE, C_JL2, C_JVEL = range(6)
 
+ORDER = [  # 17표.png 와 같은 순서. 완주율 내림차순, 같으면 전역 오차 오름차순이다.
+    "walk4_subject1", "walk3_subject2", "walk1_subject2", "walk3_subject5",
+    "aiming1_subject1", "walk1_subject5", "dance2_subject3", "walk2_subject1",
+    "walk1_subject1", "walk2_subject4", "run2_subject4", "jumps1_subject1",
+    "obstacles3_subject3", "walk2_subject3", "walk3_subject4",
+    "obstacles2_subject1", "walk3_subject1",
+]
+rank = lambda s: (ORDER.index(s) if s in ORDER else len(ORDER), s)
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--dir", default="outputs/sym")
 ap.add_argument("--out", default="outputs/sym/표.png")
 a = ap.parse_args()
 
 seqs = sorted({os.path.basename(f).rsplit("_sim2sim", 1)[0]
-               for f in glob.glob(f"{a.dir}/*_sim2sim.npz")})
+               for f in glob.glob(f"{a.dir}/*_sim2sim.npz")}, key=rank)
 rows = []
 for s in seqs:
     r = {"seq": s}
