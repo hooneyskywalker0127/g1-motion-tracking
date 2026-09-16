@@ -378,48 +378,21 @@ passed.
 
 ### Posture crosses over, position does not
 
-Over all 13,064 frames of `walk1_subject1`, mean joint error is 0.064 rad in
-Isaac and 0.065 rad in MuJoCo, and the two references agree frame by frame to
-0.000000.
+Joint angle error is 0.594 rad in Isaac and 0.593 rad in MuJoCo. Posture crosses
+over with essentially no loss.
 
-What does not cross over is position. About 72% of the global error is root
-horizontal drift, and the drift is a heading error rather than a step-length
-deficit: the robot walks the right distance in a slightly wrong direction and
-the gap opens with time. The same drift appears in Isaac, so it is not a MuJoCo
-artefact. Re-anchoring the reference to the robot's torso and removing yaw
-drops the mean from 382.8 mm to 87.3 mm.
+What does not cross over is position. Re-anchoring MuJoCo's 101.3 mm global body
+error to the robot anchor drops it to 38.0 mm, so 62 % of the error is root
+position and heading drift rather than posture. The same drift appears in Isaac
+(108.3 → 40.6 mm), so it is not a MuJoCo artefact.
 
-### The six that do not complete
+### The three that do not complete
 
-Eleven of seventeen complete the full clip in MuJoCo. Three of the six failures
-are the reference defects described above. Two leave the threshold for 0.7% and
-2.5% of their frames and return. One was never trained to convergence.
-
-A single deterministic rollout per sequence is thin, so each was rerun with ten
-seeds of initial joint and root noise, giving 170 rollouts. Fourteen agree with
-the single-seed result; three do not. `jumps1_subject1` reads 0% on one seed
-and 30% over ten.
-
-### Under matched perturbation
-
-Pushes drawn from the same distribution at the same 1 to 3 s interval give
-0.182 in MuJoCo and 0.202 in Isaac, correlated at 0.965. Scoring the same
-MuJoCo rollouts under Isaac's own termination criterion instead gives 0.769.
-Which criterion you pick moves the number about four times as much as which
-simulator you run.
-
-Matching the perturbation took care. Isaac adds the push to `root_vel_w`, a
-world-frame 6D vector, while MuJoCo's free joint keeps linear velocity in world
-and angular velocity body-local. Adding the same vector to both compares
-nothing; the angular part has to be rotated into the body frame first.
-
-### Definitions had to be matched too
-
-The relative-error columns were not the same quantity at first. Isaac
-re-anchors the reference to `torso_link` and removes yaw
-(`commands.py` 284-294); the MuJoCo side was subtracting each pelvis and
-leaving rotation alone. On the same rollout that reads 22.1 mm one way and
-30.5 mm the other.
+Fourteen of seventeen complete the full clip. The remaining three are the zeros
+in table B: `obstacles2_subject1`, `walk3_subject1` and `walk3_subject4`. They
+differ in kind. The first survives 8.6 % of its clip and is unconverged; the
+other two reach 77-87 % and fail near the end, where the LAFAN1 actor sits or
+lies down and the selection criterion never looked for that.
 
 ### Code
 
@@ -432,9 +405,6 @@ leaving rotation alone. On the same rollout that reads 22.1 mm one way and
 | `src/sym_table.py` | collects the three conditions into tables A, B and C |
 | `src/sym_table_png.py` | renders the same tables as an image |
 | `scripts/sym_all.sh` | re-measures all 17 under the three conditions |
-| `src/sim2sim_push.py` | matched perturbation on both sides |
-| `src/horizon_trials.py` | keeps the full error time series per seed |
-| `src/sim2sim_full_table.py` | builds the table |
 | `scripts/make_video_pair.sh` | renders both panels on the same instant |
 
 ---
