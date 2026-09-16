@@ -311,18 +311,70 @@ All three termination conditions look at z alone. None of them sees horizontal
 drift, and PolySim's threshold is built to catch exactly that. The two criteria
 are not measuring the same thing.
 
-| criterion | passes |
-| --- | --- |
-| BeyondMimic termination | 14 / 17 |
-| PolySim 0.5 m | 11 / 17 |
-
-`jumps1_subject1`, `run2_subject4` and `walk2_subject3` separate the two. They
-never fall over, but each leaves the reference by more than 0.5 m at some point.
-
 One caveat. PolySim's text says mean body position error over 0.5 m, but the
 released code tests whether any single body exceeds a curriculum threshold
 (1.5 m by default) and has that check disabled in the default configuration.
-The numbers above implement the text.
+The numbers below implement the text.
+
+### Is anything lost in transfer
+
+Putting two simulators side by side requires the two columns to be the same
+quantity. Four things were matched.
+
+| item | what was matched |
+| --- | --- |
+| scorer | `src/score_standard.py` alone; `scripts/beyondmimic/eval_sym.py` uses the same expressions on the Isaac side |
+| perturbation | the `MotionCommandCfg` values from `tracking_env_cfg.py` on both sides: root position, orientation, velocity and joints, uniform |
+| alignment | reference and robot are read at the same instant |
+| termination | both sides roll to the end without early termination; the two criteria are computed afterwards |
+
+The last row is the one that matters. With Isaac's termination enabled, an
+episode ends the moment the robot falls, so global error after the fall is never
+recorded and a failed rollout scores as a PolySim success. MuJoCo has no
+termination, rolls to the end, and a fallen robot always crosses 0.5 m. The two
+numbers would carry the same name while measuring different things.
+
+Three conditions: sim is Isaac without perturbation, sim-dr is Isaac with it over
+100 environments, sim2sim is MuJoCo with the same perturbation over 100 trials.
+The window is full clip length.
+
+| | sim | sim-dr | sim2sim | retention |
+| --- | --- | --- | --- | --- |
+| BeyondMimic success | 0.779 | 0.765 | 0.775 | 101.4 % |
+| PolySim success | 0.668 | 0.633 | 0.609 | 96.3 % |
+| global body error | 105.6 mm | 108.3 mm | 101.3 mm | 106.9 % |
+| local pose, re-anchored | 40.5 mm | 40.6 mm | 38.0 mm | 106.7 % |
+| joint angle | 0.594 rad | 0.594 rad | 0.593 rad | 100.2 % |
+
+Retention is MuJoCo/Isaac for success rates and Isaac/MuJoCo for errors, so 100 %
+means nothing was lost either way. Nothing is lost.
+
+Above 100 % does not mean MuJoCo is the better engine. Contact handling and the
+solver differ. The sentence this supports is that there is no transfer loss, and
+no more than that. The comparable published figure is PHUMA appendix D.3, which
+reports 90.5 % and 93.2 % retention going from Isaac Gym to MuJoCo.
+
+That the two criteria measure different things shows up directly.
+
+| sequence | BeyondMimic | PolySim |
+| --- | --- | --- |
+| jumps1_subject1 | 0.98 / 0.97 | 0.05 / 0.14 |
+| run2_subject4 | 0.83 / 0.73 | 0.00 / 0.00 |
+
+Jumping and running. Local tracking never breaks, but the robot drifts more than
+0.5 m globally. This is why one criterion is not enough.
+
+Three of the 17 are zero under both. `obstacles2_subject1` survives only 8.6 % of
+the clip and is an unconverged policy; `walk3_subject1` and `walk3_subject4` get
+77-87 % of the way through and fail near the end. Retargeting Matters reports
+96-100 % on the same LAFAN1, G1 and BeyondMimic, so these three are a
+termination-condition and motion-selection problem, not a transfer problem.
+
+The two scorers were checked against each other first. Isaac's env 0 rollout was
+dumped in full, rescored with the MuJoCo scorer, and compared against the online
+values: all five metrics agree to four decimal places, the residual coming from
+the dump being float16. No column was placed in a shared table before that check
+passed.
 
 ### Posture crosses over, position does not
 
@@ -376,7 +428,10 @@ leaving rotation alone. On the same rollout that reads 22.1 mm one way and
 | `src/sim2sim.py` | runs the onnx actor in MuJoCo |
 | `src/sim2sim_polysim.py` | the five PolySim metrics |
 | `src/score_standard.py` | scores one rollout set under both criteria |
-| `src/sim2sim_trials.py` | N-seed trials per sequence |
+| `src/sim2sim_trials.py` | N trials per sequence under Isaac's perturbation spec |
+| `src/sym_table.py` | collects the three conditions into tables A, B and C |
+| `src/sym_table_png.py` | renders the same tables as an image |
+| `scripts/sym_all.sh` | re-measures all 17 under the three conditions |
 | `src/sim2sim_push.py` | matched perturbation on both sides |
 | `src/horizon_trials.py` | keeps the full error time series per seed |
 | `src/sim2sim_full_table.py` | builds the table |
@@ -469,44 +524,35 @@ that artifacts left in retargeted trajectories — foot sliding, self-penetratio
 physically infeasible poses — measurably reduce the robustness of the tracking
 policy trained on them.
 
-### kobe — putting a number beside PolySim's table
+### kobe — does it hold outside LAFAN1
 
-The 17 above come from LAFAN1 and cannot be placed against PolySim's table
-directly. The same motion under the same metrics is what makes them
-comparable. One motion from the ASAP dataset, kobe, was converted with
+All 17 above are LAFAN1 walking and dance. There is no high-difficulty one-shot
+motion among them, so one motion from the ASAP dataset, kobe, was converted with
 `src/asap_to_csv.py` and run through the same pipeline: 206 frames, 4.1 s.
 
 ![kobe](docs/kobe.gif)
 
-The full 4.1 s. Isaac Lab on the left, MuJoCo on the right.
+The full 4.1 s. Isaac Lab on the left, MuJoCo on the right. Over 100 MuJoCo
+trials: BeyondMimic success 1.000, PolySim success 0.990, global body error
+128.0 mm. No transfer loss here either.
 
-| | PolySim Table III | here |
-| --- | --- | --- |
-| setting | IsaacSim_DR → MuJoCo | Isaac Lab → MuJoCo |
-| MuJoCo success | 0.100 (10 trials) | 1.000 (10 trials) |
-| E_g-mpjpe | 272.6 mm | 100.4 mm |
-
-Scored under both criteria used here:
-
-| | Isaac Lab | MuJoCo |
-| --- | --- | --- |
-| global body error | 94.9 mm | 94.5 mm |
-| local pose, re-anchored | 44.5 mm | 43.8 mm |
-| joint angle | 0.070 rad | 0.069 rad |
-| survives termination | pass | pass |
-| stays within 0.5 m | pass | pass |
-
-Global error goes from 94.9 mm to 94.5 mm. There is essentially no transfer
-loss.
+One clip is not a sample. What it supports is that transfer holds outside
+LAFAN1, and nothing beyond that.
 
 It took three training runs. The first two never converged: the csv was
 written in Isaac joint order rather than URDF order, which put
 `error_joint_pos` at 2.44 rad, and the reference floated above the ground.
 
-The comparison carries conditions. The trainer, the window length and the
-sample size all differ from the paper, and PolySim's success test differs
-between its text and its released code. What is matched is the motion and the
-metric definitions.
+This clip is not placed against PolySim's table, for three reasons. First, the
+0.100 in their Table III for `IsaacSimDR → MuJoCo` is not PolySim's own result;
+it is the single-simulator DR baseline the table exists to argue against.
+PolySim's own row is the last one, `IsaacSim+IsaacGym+Genesis`, at 1.000.
+Second, the paper names neither the 14 motions nor the 5 motions it evaluates on
+— Kobe is the only motion named anywhere in the text — so the same set cannot be
+assembled. Third, the trainer differs: PolySim uses HumanoidVerse with ASAP
+rewards and teacher-student, this uses BeyondMimic. Retargeting Matters reports
+sim2sim success mostly at 100 % on the same LAFAN1, G1 and BeyondMimic, so the
+1.000 here is the ordinary value for this lineage, not a win over PolySim.
 
 ## What is left
 
@@ -522,25 +568,20 @@ The order follows the dependencies: 1 and 2 change what 3 operates on.
    finish may survive this.
 3. Train the remaining two, obstacles1_subject1 and obstacles4_subject2. Steps 1
    and 2 change which sequences these are.
-4. Score the Isaac side under both criteria. The two-criteria table is filled in
-   for MuJoCo only; `scripts/gt_dump_all.sh` dumps the per-frame global error for
-   all 17 and completes the other two cells.
 
 ## Status
 
-Stages 1 to 3 are done. Stage 4 has 17 of the 19 selected sequences trained to
-30,000 iterations and evaluated over 100 rollouts. The two left are
-obstacles1_subject1 and obstacles4_subject2.
+17 of the 19 selected sequences are trained to 30,000 iterations. The two left
+are obstacles1_subject1 and obstacles4_subject2; steps 1 and 2 above change which
+sequences those are, so training them now would be work thrown away. That is why
+they sit after those steps.
 
 The evaluation code exists now. The BeyondMimic repository ships `train.py` and
 `play.py` but nothing that counts whether a policy carries a reference to the
 end, so completion rate and tracking error are measured here against the GMR
 paper's definitions.
 
-sim-to-sim is finished for all 17 at full clip length, with a comparison video
-for each. Results are above.
-
-Currently running is one motion from the ASAP dataset, kobe. The 17 above come
-from LAFAN1, which cannot be placed next to PolySim's table directly. The same
-motion under the same metrics is what puts a number beside their Table III
-(success 0.100, E_g-mpjpe 272.6 mm going from IsaacSim_DR to MuJoCo).
+sim-to-sim is finished for all 17 at full clip length. Two Isaac conditions and
+one MuJoCo condition were re-measured under the same perturbation, the same
+scoring definitions and the same instant alignment to produce a transfer
+retention figure. A comparison video exists for each. Results are above.

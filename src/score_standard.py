@@ -71,21 +71,38 @@ def score(d):
     term = bad_pos | bad_ori | bad_ee
     first = int(np.argmax(term)) if term.any() else -1
 
-    jrms = np.sqrt(((d["ref_joint_pos"] - d["rob_joint_pos"]) ** 2).mean(axis=1))
-    jvel = np.sqrt(((d["ref_joint_vel"] - d["rob_joint_vel"]) ** 2).mean(axis=1))
+    # 관절 오차는 KungfuBot 식 (23) 의 L2 노름이다. BeyondMimic 이
+    # error_joint_pos 로 로깅하는 것과 같은 식이다 (commands.py:204).
+    # 관절당 평균 절댓값이나 RMS 로 내면 Isaac 쪽 값과 맞댈 수 없다.
+    jl2 = np.linalg.norm(d["ref_joint_pos"] - d["rob_joint_pos"], axis=1)
+    jvel = np.linalg.norm(d["ref_joint_vel"] - d["rob_joint_vel"], axis=1)
+
+    # 평균은 살아 있는 프레임에만 낸다. Isaac 은 종료되면 거기서 멈추므로
+    # 실패 뒤 구간이 애초에 없다. MuJoCo 는 끝까지 굴러가니 직접 잘라야 한다.
+    alive = np.ones(len(mpkpe), bool) if first < 0 else np.arange(len(mpkpe)) < first
+    n_alive = max(int(alive.sum()), 1)
+    am = lambda v: float(v[alive].sum() / n_alive)
+
     return dict(
-        frames=len(mpkpe),
+        frames=len(mpkpe), alive_frames=int(alive.sum()),
         bm_success=not term.any(), bm_first=first,
         bm_cause=("pos" if first >= 0 and bad_pos[first] else
                   "ori" if first >= 0 and bad_ori[first] else
                   "ee" if first >= 0 else "-"),
+        # PolySim 판정은 BeyondMimic 종료와 독립이다. 원문이 "if at any point,
+        # the mean body position error exceeds 0.5 m" 하나뿐이다.
         poly_success=not (mpkpe > FAIL_M).any(),
-        mpkpe=mpkpe.mean() * 1000, r_mpkpe=r_mpkpe.mean() * 1000,
-        jrms=jrms.mean(), jvel=jvel.mean())
+        poly_first=int(np.argmax(mpkpe > FAIL_M)) if (mpkpe > FAIL_M).any() else -1,
+        mpkpe=am(mpkpe) * 1000, r_mpkpe=am(r_mpkpe) * 1000,
+        jl2=am(jl2), jvel=am(jvel),
+        # 살아 있는 구간으로 자르지 않은 값. 둘을 같이 내야 실패가 섞인 표를
+        # 읽는 사람이 오해하지 않는다.
+        mpkpe_full=float(mpkpe.mean()) * 1000, r_mpkpe_full=float(r_mpkpe.mean()) * 1000,
+        jl2_full=float(jl2.mean()), jvel_full=float(jvel.mean()))
 
 
 if __name__ == "__main__":
-    hdr = (f"{'시퀀스':<22}{'MPKPE':>8}{'R-MPKPE':>9}{'관절':>7}{'관절속도':>9}"
+    hdr = (f"{'시퀀스':<22}{'MPKPE':>8}{'R-MPKPE':>9}{'관절L2':>8}{'관절속도':>9}"
            f"{'BM성공':>8}{'BM이탈(초)':>11}{'원인':>6}{'PolySim':>9}")
     print(hdr); print("-" * len(hdr))
     rows = []
@@ -93,7 +110,7 @@ if __name__ == "__main__":
         s = os.path.basename(f)[:-4]
         r = score(np.load(f)); rows.append((s, r))
         first = "—" if r["bm_first"] < 0 else f"{r['bm_first'] / 50:.0f}"
-        print(f"{s:<22}{r['mpkpe']:>8.1f}{r['r_mpkpe']:>9.1f}{r['jrms']:>7.3f}"
+        print(f"{s:<22}{r['mpkpe']:>8.1f}{r['r_mpkpe']:>9.1f}{r['jl2']:>7.3f}"
               f"{r['jvel']:>9.3f}{'성공' if r['bm_success'] else '실패':>8}"
               f"{first:>11}{r['bm_cause']:>6}"
               f"{'성공' if r['poly_success'] else '실패':>9}")
