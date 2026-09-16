@@ -355,7 +355,18 @@ no more than that. The comparable published figure is PHUMA appendix D.3, which
 reports 90.5 % and 93.2 % retention going from Isaac Gym to MuJoCo.
 
 Per sequence, ordered by completion rate to match the training results table
-above. Errors are in mm; the three with no completed rollout are undefined.
+above.
+
+| column | meaning |
+| --- | --- |
+| S_bm | share of rollouts that never trip any of the three BeyondMimic termination conditions, at the thresholds in the table above |
+| S_poly | share of rollouts whose mean global body error never crosses 0.5 m, judged independently of S_bm |
+| global | mean body position error in world coordinates (mm); grows with root drift |
+| local | the same error after re-anchoring the reference to the robot anchor (mm), which removes root drift and leaves posture |
+
+Isaac columns are sim-dr (100 environments), MuJoCo columns are sim2sim (100
+trials). Errors are averaged over completing trials only, so the three with none
+are undefined.
 
 | sequence | S_bm Isaac | S_bm MuJoCo | S_poly Isaac | S_poly MuJoCo | global Isaac | global MuJoCo | local Isaac | local MuJoCo |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
