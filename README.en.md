@@ -328,13 +328,16 @@ The numbers below implement the text.
 The same policy was run in Isaac, where it was trained, and in MuJoCo, which it
 had never seen. The numbers do not drop.
 
-| | Isaac | MuJoCo |
-| --- | --- | --- |
-| completed the clip | 0.765 | 0.775 |
-| global body error | 108.3 mm | 101.3 mm |
-| joint angle | 0.594 rad | 0.593 rad |
+| | Isaac | MuJoCo | over |
+| --- | --- | --- | --- |
+| completed the clip | 0.765 | 0.775 | 17 sequences |
+| global body error | 108.3 mm | 101.3 mm | 14 sequences |
+| joint angle | 0.594 rad | 0.593 rad | 14 sequences |
 
-Averaged over 17 sequences, 100 runs each.
+100 runs each. Error is averaged over completing runs only, so the three that
+complete none (`obstacles2_subject1`, `walk3_subject1`, `walk3_subject4`) drop
+out of the two error rows. Excluding those three, completion is 0.929 in Isaac
+and 0.941 in MuJoCo.
 
 ![sim2sim dance](docs/sim2sim_dance.gif)
 
