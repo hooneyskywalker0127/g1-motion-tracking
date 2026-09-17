@@ -15,6 +15,8 @@ solved by a different hand.
 
 Trained policies and evaluation results: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
 
+Training curves: [W&B](https://wandb.ai/hooneyskywalker-humanoid/g1_distill)
+
 All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
 
 ---
