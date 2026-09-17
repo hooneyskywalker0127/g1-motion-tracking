@@ -27,6 +27,7 @@ All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2k
 
 Stages 1 to 3 carry no physics: they compute poses and decide which ones are
 worth keeping. Physics enters at stage 4, where the robot has to hold itself up.
+Stage 5 merges the per-motion policies into one.
 
 ### 1. Human mocap
 
@@ -122,6 +123,83 @@ on an RTX 5080.
 
 The gif above is six seconds of it. The whole sequence runs 3 minutes 58
 seconds.
+
+### 5. Policy distillation
+
+![stage 5](docs/stage_5.png)
+
+Stage 4 leaves one policy per motion. Driving 14 motions means holding 14
+policies and picking one. Stage 5 merges them into a single policy.
+
+The method is distillation. The 14 trained policies act as teachers while a
+single student policy drives the simulator itself, asking the teachers at every
+step what they would have done and copying the answer. Copying only the states
+the teachers visited leaves the student unable to recover once it drifts, so the
+student rolls out first and is labelled where it actually ends up. That is
+DAgger ([Ross et al., 2011](https://arxiv.org/abs/1011.0686)).
+
+The distillation code is [HOVER](https://github.com/NVlabs/HOVER)'s
+`neural_wbc/student_policy`, used as is. The trainer, the student network, the
+buffer and the loss are untouched; only the package-internal imports changed.
+HOVER runs on IsaacLab and rsl-rl, the same stack as this repository.
+
+HOVER assumes a single teacher, so one place had to change. The trainer hands
+the teacher nothing but an observation tensor, which leaves the observation as
+the only channel for saying which teacher to use. A motion index is appended to
+the end of the teacher observation, and the teacher implementation strips it off
+and routes each environment to its own teacher. Carrying the selector inside the
+observation is what [parkour](https://github.com/ZiwenZhuang/parkour)'s
+`ActorCriticFieldMutex` does.
+
+The student is not given the motion index. With it, the student would memorise
+the clip number and stop reading the reference. Tracking a motion it never
+trained on requires judging from the reference alone.
+
+The teacher observation is 161-dimensional (58 reference joint values, 9 anchor
+error, 93 proprioception, 1 motion index); the student sees 160. Every teacher
+is [512, 256, 128]; the student was widened to [1024, 512, 256] because the
+BumbleBee paper reports that a three-layer MLP could not hold several experts
+and was replaced with a transformer.
+
+14 policies are used as teachers. Of the 17 that were trained, the three with a
+0% completion rate have no finished rollout to imitate. kobe is held out as the
+control for generalisation.
+
+#### Multiple clips in one environment
+
+The stage 4 environment takes a single npz. Distillation needs the student to
+experience all 14 clips, so three places changed.
+
+`MotionLoader` now accepts a list of npz files, concatenates them along time and
+keeps the clip boundaries separately. Nothing is padded. The time index stays a
+flat index into the concatenated array, so the existing indexing and anchor
+transforms keep working. PHC, ProtoMotions and SONIC all use the same layout.
+
+The clip a given environment is following is not stored: it is a binary search
+of the time index against the clip boundaries. Anything stored separately can
+drift out of sync.
+
+Per-clip sampling probability is capped. With failure-driven adaptive sampling
+alone, one hard clip takes over the distribution and the easy ones are
+forgotten. SONIC caps it for the same reason with `max_prob_per_motion`, and
+notes that roughly twice the fair share is the conservative choice when
+diversity matters. The same factor of two is the default here.
+
+There is a second reason for the cap. Walking accounts for 67% of the frames
+across the 14 clips (107,777 of 162,049). Sampling uniformly without a cap tilts
+the merged policy toward walking.
+
+#### Status
+
+Training runs. 4096 environments fit on an RTX 5080 16GB at 0.05 s per
+iteration. The loss falls from 4.44 and the mean episode length rises over
+training rather than flattening.
+
+No evaluation yet. A falling loss means the student imitates the teachers more
+closely, not that the robot stays up and finishes all 14 clips. How much
+completion and tracking error degrade against the individual teachers, and
+whether an unseen motion is tracked at all, will be reported from evaluation
+results.
 
 ### ▶ Full clip (YouTube)
 
