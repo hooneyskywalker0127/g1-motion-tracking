@@ -39,7 +39,7 @@ import onnx
 import onnxruntime as ort
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from sim2sim import SIM_DECIMATION, Sim2Sim  # noqa: E402
+from sim2sim import POLICY_DIR, SIM_DECIMATION, Sim2Sim  # noqa: E402
 
 MOTION_ROOT = pathlib.Path("/home/sehoon/motions_fixed")
 META_TEACHER = pathlib.Path("/home/sehoon/colcon_ws/policies/walk4_subject1.onnx")
@@ -49,7 +49,26 @@ class Sim2SimStudent(Sim2Sim):
     def __init__(self, seq: str, onnx_path: str, headless: bool = True):
         # 부모는 policies/<seq>.onnx 를 찾는다. 바디 매핑을 구하는 데에만 쓰고
         # 정책은 곧바로 학생 것으로 바꾼다.
-        super().__init__(seq, headless=headless, motion_npz=str(self._npz(seq)))
+        #
+        # 260924 — 학습에 없던 클립(ASAP 민첩 동작 등)은 교사가 없어서 그 파일이
+        # 없다. 매핑은 npz 의 바디 30개 중 어느 14개를 쓰는지를 찾는 것이고,
+        # 로봇이 같으면 같은 답이 나온다. 그래서 없을 때는 walk4 교사로 대신 푼다.
+        own = (POLICY_DIR / f"{seq}.onnx").is_file()
+        if own:
+            super().__init__(seq, headless=headless, motion_npz=str(self._npz(seq)))
+        else:
+            # 매핑은 ONNX 에 구워진 레퍼런스와 npz 를 대조해 찾는다. 그러려면 둘이
+            # 같은 모션이어야 한다. 학습에 없던 클립은 교사가 없으므로, walk4 의
+            # 교사와 walk4 의 npz 로 매핑을 먼저 구하고 그 인덱스를 그대로 쓴다.
+            # 매핑은 npz 의 바디 30개 중 어느 14개냐는 문제이고 로봇의 성질이다.
+            print(f"[student] {seq} 교사 ONNX 가 없다. 바디 매핑은 walk4_subject1 로 구한다")
+            super().__init__("walk4_subject1", headless=headless,
+                             motion_npz=str(self._npz("walk4_subject1")))
+            sel = self.body_sel
+            d = np.load(self._npz(seq))
+            self.ref_npz = (d["joint_pos"], d["joint_vel"],
+                            d["body_pos_w"][:, sel], d["body_quat_w"][:, sel])
+        self.seq = seq
 
         self.student = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
         md = {e.key: e.value for e in onnx.load(onnx_path).metadata_props}

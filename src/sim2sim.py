@@ -119,6 +119,9 @@ class Sim2Sim:
             sel = [int(i) for i in np.argmin(cost, axis=1)]
             if len(set(sel)) != len(sel):
                 raise SystemExit(f"{seq}: 바디 매핑에 중복이 있다 {sel}")
+            # 매핑은 로봇의 성질이라 모션이 달라도 같다. 학습에 없던 클립에
+            # 재사용하려고 남겨 둔다(sim2sim_student.py).
+            self.body_sel = sel
             self.ref_npz = (d["joint_pos"], d["joint_vel"],
                             d["body_pos_w"][:, sel], d["body_quat_w"][:, sel])
 
