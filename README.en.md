@@ -21,6 +21,27 @@ All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2k
 
 ---
 
+## Result in one line
+
+Fourteen single-motion expert policies consolidate into one, with no loss of
+tracking accuracy.
+
+| | Completion | E_g |
+|---|---|---|
+| 14 experts, each on its own clip | 99.2% | 107mm |
+| **one unified policy** | **99.89%** | **90mm** |
+
+64 rollouts, domain randomization off, full clip length. Distillation usually
+costs accuracy; here it gained. With it come MuJoCo transfer at 12/14, 76.1%
+under randomization, and 6 of 13 motion transitions without resetting the robot.
+
+What it cannot do was measured too: generalization fails — 0 of the 63 held-out
+LAFAN1 clips complete — and recovery under perturbation is 7-8 points below the
+experts. Details in [stage 5](#5-policy-distillation) and the
+[summary](#summary--what-works-and-what-does-not).
+
+---
+
 ## Pipeline
 
 ![pipeline](docs/pipeline.png)
@@ -156,10 +177,21 @@ the clip number and stop reading the reference. Tracking a motion it never
 trained on requires judging from the reference alone.
 
 The teacher observation is 161-dimensional (58 reference joint values, 9 anchor
-error, 93 proprioception, 1 motion index); the student sees 160. Every teacher
-is [512, 256, 128]; the student was widened to [1024, 512, 256] because the
-BumbleBee paper reports that a three-layer MLP could not hold several experts
-and was replaced with a transformer.
+error, 93 proprioception, 1 motion index); the student sees 260. The student
+gets 100 terms the teacher does not — the reference-minus-current joint position
+difference (29), the joint velocity difference (29), and the body position
+difference in the anchor frame (42). This follows OpenTrack, whose student
+receives the reference as a difference rather than raw: given only the raw
+reference, the network has to learn the subtraction first.
+
+Every teacher is [512, 256, 128]; the student is
+[2048, 2048, 1024, 1024, 512]. **That capacity is what decided the result.**
+It started at [1024, 512, 256] and one clip out of fourteen stayed stuck at 9%
+completion. Sixteen hypotheses were falsified before the cause turned out to be
+capacity: raising the training episode from 10 s to 40 s and widening the
+network fourfold took the worst clip to 98.4%. This is the point the BumbleBee
+paper makes when it reports that a three-layer MLP could not hold several
+experts and was replaced with a transformer.
 
 14 policies are used as teachers. Of the 17 that were trained, the three with a
 0% completion rate have no finished rollout to imitate. kobe is held out as the
@@ -189,17 +221,68 @@ There is a second reason for the cap. Walking accounts for 67% of the frames
 across the 14 clips (107,777 of 162,049). Sampling uniformly without a cap tilts
 the merged policy toward walking.
 
-#### Status
+#### Result — fourteen into one, with no loss of accuracy
 
-Training runs. 4096 environments fit on an RTX 5080 16GB at 0.05 s per
-iteration. The loss falls from 4.44 and the mean episode length rises over
-training rather than flattening.
+64 rollouts, domain randomization off, full clip length.
 
-No evaluation yet. A falling loss means the student imitates the teachers more
-closely, not that the robot stays up and finishes all 14 clips. How much
-completion and tracking error degrade against the individual teachers, and
-whether an unseen motion is tracked at all, will be reported from evaluation
-results.
+| | Completion | E_g |
+|---|---|---|
+| 14 experts, each on its own clip | 99.2% | 107mm |
+| **one unified policy** | **99.89%** | **90mm** |
+
+Distillation usually costs accuracy. Here it gained. Thirteen of the fourteen
+complete at 100%; only walk2_subject3 sits below, at 98.4%.
+
+Three things come with it.
+
+- **sim-to-sim** — the same onnx file, with no retraining and no gain retuning,
+  completes 12 of 14 in MuJoCo. Global error grows 5-20% but the anchor-aligned
+  error is actually lower in MuJoCo, meaning the posture tracks and what
+  accumulates is global drift.
+- **domain randomization** — 76.1% mean with a random push every 1-3 s and
+  randomized friction, torso CoM, joint offsets and reset pose. The more
+  dynamic the motion, the more it costs (running 43.8%, walk4 98.4%).
+- **motion transition** — switching the reference to the next clip without
+  resetting the robot holds for 6 of 13 boundaries. Fourteen separate experts
+  structurally cannot do this: the instant you swap networks, the robot is in a
+  state the incoming policy has never seen.
+
+#### What it cannot do was measured too
+
+Every remaining LAFAN1 sequence — 63 clips — was retargeted and run through the
+same policy. Nothing was retrained. The split follows SONIC.
+
+| | Clips | Completion | Survived |
+|---|---|---|---|
+| the 14 training clips | 14 | 99.89% | 100% |
+| test-repetition — a motion type **in** training, a take that is not | 35 | 0.0% | 13.4% |
+| test-content — a motion type **not** in training | 28 | 0.0% | 8.6% |
+
+**Not one of the 63 runs to the end.** The ordering tracks distance from the
+training distribution: walk 48.9% > aiming 22.1% > dance 15.7% > run 13.8% >
+obstacles 5.1% > jumps 1.4%, and fight, ground and fallAndGetUp — lying down and
+heavy contact — bottom out at 3-5%.
+
+Fourteen clips is three orders of magnitude below what general trackers train on
+(GMT 8,925, SONIC 317,189). Generalization was never on the table at this scale.
+Being conditioned on the reference rather than a clip index is a **necessary
+condition for generalization, not a sufficient one.**
+
+#### Under perturbation the experts win
+
+The "no loss" above is measured in clean conditions. Putting teachers and
+student under identical pushes reverses it.
+
+| Push magnitude | 14 experts | unified policy |
+|---|---|---|
+| same as training | 91.0% | 84.3% |
+| twice that | 31.7% | 23.3% |
+
+E_g is still lower for the unified policy on 11 of 14 clips. Tracking accuracy
+holds; what degrades is **recovery after being pushed**. Distillation learning
+the teachers' mean behaviour, with recovery from perturbed states rare in the
+data, is a plausible explanation but was not verified. Adding perturbation to
+the DAgger rollouts may change it.
 
 ### ▶ Full clip (YouTube)
 
@@ -698,34 +781,49 @@ rewards and teacher-student, this uses BeyondMimic. Retargeting Matters reports
 sim2sim success mostly at 100 % on the same LAFAN1, G1 and BeyondMimic, so the
 1.000 here is the ordinary value for this lineage, not a win over PolySim.
 
+## Summary — what works and what does not
+
+**What works**
+
+| | Completion | E_g |
+|---|---|---|
+| 14 experts, each on its own clip | 99.2% | 107mm |
+| **one unified policy** | **99.89%** | **90mm** |
+
+Fourteen single-motion experts consolidate into one policy with no loss of
+tracking accuracy. Distillation usually costs accuracy; here it gained. With it
+come MuJoCo transfer at 12/14, 76.1% under domain randomization, and 6 of 13
+motion transitions without resetting the robot.
+
+One clip blocked this for a long time and the cause was **capacity**. `aiming1`
+stayed at 9% completion while the other thirteen were fine; sixteen hypotheses
+were falsified before raising the training episode from 10 s to 40 s and
+widening the network fourfold took the worst clip to 98.4%.
+
+**What does not work**
+
+Generalization. Zero of the 63 held-out LAFAN1 clips complete. Fourteen clips is
+three orders of magnitude below GMT (8,925) and SONIC (317,189), so this was
+never on the table — but where it works and where it stops is now drawn with 63
+clips rather than guessed.
+
+**What it costs**
+
+Recovery from perturbation, 7-8 points below the experts under pushes. Tracking
+accuracy holds, so what consolidation costs is recovery, not accuracy.
+
 ## What is left
 
-The order follows the dependencies: 1 and 2 change what 3 operates on.
-
-1. Redo selection. The current 19 were picked on foot error, which turned out
-   not to predict policy performance. Run `src/motion_defect_census.py` over all
-   77 retargeted clips and select on ground penetration, airborne fraction, foot
-   slip and joint velocity violation instead.
-2. Correct penetration. Run forward kinematics over each retarget, store the
-   minimum body height per frame, and offset the whole motion by it — the same
-   step Retargeting Matters describes. Two of the sequences that currently never
-   finish may survive this.
-3. Train the remaining two, obstacles1_subject1 and obstacles4_subject2. Steps 1
-   and 2 change which sequences these are.
-
-## Status
-
-17 of the 19 selected sequences are trained to 30,000 iterations. The two left
-are obstacles1_subject1 and obstacles4_subject2; steps 1 and 2 above change which
-sequences those are, so training them now would be work thrown away. That is why
-they sit after those steps.
-
-The evaluation code exists now. The BeyondMimic repository ships `train.py` and
-`play.py` but nothing that counts whether a policy carries a reference to the
-end, so completion rate and tracking error are measured here against the GMR
-paper's definitions.
-
-sim-to-sim is finished for all 17 at full clip length. Two Isaac conditions and
-one MuJoCo condition were re-measured under the same perturbation, the same
-scoring definitions and the same instant alignment to produce a transfer
-retention figure. A comparison video exists for each. Results are above.
+1. **More training motions.** This comes first if generalization is to be
+   discussed at all. All 77 LAFAN1 sequences are retargeted, so the material
+   exists: 14 → 60 clips with the remaining 17 held out would make
+   test-repetition and test-content meaningful sizes.
+2. **Perturbation in the DAgger rollouts.** If the unified policy loses on
+   recovery because it only ever learned the teachers' mean behaviour, labelling
+   it from perturbed states should change that.
+3. **Redo the retargeting selection.** The current criterion is foot error,
+   which did not predict policy performance. Select on ground penetration,
+   airborne fraction, foot slip and joint velocity violation instead, and
+   correct penetration by measuring minimum body height per frame with forward
+   kinematics and offsetting the motion — the step Retargeting Matters describes.
+4. **Hardware.** The scope here ends at simulation.
