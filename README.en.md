@@ -23,21 +23,30 @@ All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2k
 
 ## Result in one line
 
-Fourteen single-motion expert policies consolidate into one, with no loss of
-tracking accuracy.
+Fourteen single-motion expert policies consolidate into one, and on tracking
+accuracy **the two are indistinguishable.**
 
-| | Completion | E_g |
-|---|---|---|
-| 14 experts, each on its own clip | 99.2% | 107mm |
-| **one unified policy** | **99.89%** | **90mm** |
+| | Completion | E_g | E | E_j | vel | acc |
+|---|---|---|---|---|---|---|
+| 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 | 4.78 | 2.09 |
+| **one unified policy** | 95.6% | 109mm | 42mm | **0.084** | 4.84 | **2.08** |
 
-64 rollouts, domain randomization off, full clip length. Distillation usually
-costs accuracy; here it gained. With it come MuJoCo transfer at 12/14, 76.1%
-under randomization, and 6 of 13 motion transitions without resetting the robot.
+Both sides: 100 rollouts per sequence, domain randomization off, full clip
+length, identical evaluation code. E_g is global body position error in mm, E
+the same aligned at the root (drift removed, posture only), E_j joint angle
+error in rad, vel and acc the velocity and acceleration errors in mm/frame and
+mm/frame squared. Every error term is averaged over rollouts that finish.
 
-What it cannot do was measured too: generalization fails — 0 of the 63 held-out
-LAFAN1 clips complete — and recovery under perturbation is 7-8 points below the
-experts. Details in [stage 5](#5-policy-distillation) and the
+**E_j, E, vel and acc are effectively equal** - joint angle error matches to
+three decimals and acceleration is marginally lower for the unified policy. What
+separates them is completion, 3.4 points, and global position error, 7 mm - and
+the completion gap is made by **two clips** (walk2_subject4, run2_subject4, obstacles3_subject3).
+Drop those two and the remaining 11 sit at 98.4% against 98.9%.
+
+With it come MuJoCo transfer at 12/14, 76.1% under randomization, and 6 of 13
+motion transitions without resetting the robot. What it cannot do was measured
+too: generalization fails - 0 of the 63 held-out LAFAN1 clips complete. Details
+in [stage 5](#5-policy-distillation) and the
 [summary](#summary--what-works-and-what-does-not).
 
 ---
@@ -225,13 +234,16 @@ the merged policy toward walking.
 
 64 rollouts, domain randomization off, full clip length.
 
-| | Completion | E_g |
-|---|---|---|
-| 14 experts, each on its own clip | 99.2% | 107mm |
-| **one unified policy** | **99.89%** | **90mm** |
+| | Completion | E_g | E | E_j |
+|---|---|---|---|---|
+| 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 |
+| **one unified policy** | 95.6% | 109mm | 42mm | **0.084** |
 
-Distillation usually costs accuracy. Here it gained. Thirteen of the fourteen
-complete at 100%; only walk2_subject3 sits below, at 98.4%.
+Both sides: 100 rollouts, identical evaluation code. **Joint angle error is the
+same** and root-aligned error differs by 0.3 mm. What separates them is
+completion, 3.4 points, and E_g - and that gap is made by two clips
+(walk2_subject4, run2_subject4, obstacles3_subject3). Drop those two and the remaining
+11 sit at 98.4% against 98.9%.
 
 Three things come with it.
 
@@ -785,13 +797,13 @@ sim2sim success mostly at 100 % on the same LAFAN1, G1 and BeyondMimic, so the
 
 **What works**
 
-| | Completion | E_g |
-|---|---|---|
-| 14 experts, each on its own clip | 99.2% | 107mm |
-| **one unified policy** | **99.89%** | **90mm** |
+| | Completion | E_g | E | E_j |
+|---|---|---|---|---|
+| 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 |
+| **one unified policy** | 95.6% | 109mm | 42mm | **0.084** |
 
 Fourteen single-motion experts consolidate into one policy with no loss of
-tracking accuracy. Distillation usually costs accuracy; here it gained. With it
+tracking accuracy - joint angle error matches to three decimals. With it
 come MuJoCo transfer at 12/14, 76.1% under domain randomization, and 6 of 13
 motion transitions without resetting the robot.
 
