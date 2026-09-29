@@ -37,8 +37,9 @@ the same aligned at the root (drift removed, posture only), E_j joint angle
 error in rad, vel and acc the velocity and acceleration errors in mm/frame and
 mm/frame squared. Every error term is averaged over rollouts that finish.
 
-Distillation usually costs accuracy. Here it gained. Twelve of the fourteen
-complete at 100% and the other two (walk1_subject1, jumps1_subject1, walk2_subject3) at 98-99%, and
+Distillation usually costs accuracy. Here it gained. Eleven of the fourteen
+complete at 100% and the other three (walk1_subject1 and walk2_subject3 at 99%,
+jumps1_subject1 at 98%) stay above 98%, and
 global position error is lower on all fourteen.
 
 With it come MuJoCo transfer at 12/14, 76.1% under randomization, and motion
@@ -238,9 +239,9 @@ the merged policy toward walking.
 | **one unified policy** | **99.7%** | **90mm** | **41mm** | **0.082** |
 
 Both sides: 100 rollouts, the same condition, identical evaluation code. **The
-unified policy matches or beats the experts on all six metrics.** Twelve of the
-fourteen complete at 100% and the other two (walk1_subject1, jumps1_subject1, walk2_subject3) at
-98-99%, and global position error is lower on all fourteen, by 12 mm on
+unified policy matches or beats the experts on all six metrics.** Eleven of the
+fourteen complete at 100% and the other three (walk1_subject1 and walk2_subject3
+at 99%, jumps1_subject1 at 98%) stay above 98%, and global position error is lower on all fourteen, by 12 mm on
 average.
 
 Three things come with it.

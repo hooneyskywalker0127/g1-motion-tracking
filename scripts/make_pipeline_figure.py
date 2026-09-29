@@ -33,17 +33,17 @@ STAGES = [
                "손끝·발끝 위치를 목표로",
                "77개 · 496,672 프레임"]),
     dict(no="3단계", name="Reference motion", physics=False, thumb="stage_3.png",
-         body=["발 오차로 19개 선별",
-               "평지 불가 3개 제외 → 16개",
+         body=["발 오차 세 조건으로 선별",
+               "77개 → 19개",
                "npz 변환 · 50 fps"]),
     dict(no="4단계", name="Motion tracking policy", physics=True, thumb="stage_4.png",
          body=["BeyondMimic · PPO",
                "모션 1개당 정책 1개",
-               "16개 학습"]),
+               "19개 중 17개 학습"]),
     dict(no="5단계", name="Policy distillation", physics=True, thumb="stage_5.png",
          body=["HOVER · DAgger",
-               "교사 14개 → 학생 1개",
-               "정책 하나로 통합"]),
+               "완주한 14개를 교사로",
+               "교사 14개 → 학생 1개"]),
 ]
 
 NOTE = ("4단계까지는 모션 1개당 정책 1개다. 5단계가 그것들을 정책 하나로 합친다. "
