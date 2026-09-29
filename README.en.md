@@ -26,15 +26,15 @@ All videos: [YouTube playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2k
 Fourteen single-motion expert policies consolidate into one, and it **matches or
 beats them on all six metrics.**
 
-| | Completion | E_g | E | E_j | vel | acc |
+| | Completion | E_g-mpbpe | E_mpbpe | E_mpjpe | E_mpbve | E_mpbae |
 |---|---|---|---|---|---|---|
 | 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 | 4.78 | 2.09 |
 | **one unified policy** | **99.7%** | **90mm** | **41mm** | **0.082** | **4.32** | **1.91** |
 
 Both sides: 100 rollouts per sequence, domain randomization off, full clip
-length, identical evaluation code. E_g is global body position error in mm, E
-the same aligned at the root (drift removed, posture only), E_j joint angle
-error in rad, vel and acc the velocity and acceleration errors in mm/frame and
+length, identical evaluation code. E_g-mpbpe is global body position error in mm, E_mpbpe
+the same aligned at the root (drift removed, posture only), E_mpjpe joint angle
+error in rad, E_mpbve and E_mpbae the body velocity and acceleration errors in mm/frame and
 mm/frame squared. Every error term is averaged over rollouts that finish.
 
 Distillation usually costs accuracy. Here it gained. Eleven of the fourteen
@@ -233,7 +233,7 @@ the merged policy toward walking.
 
 64 rollouts, domain randomization off, full clip length.
 
-| | Completion | E_g | E | E_j |
+| | Completion | E_g-mpbpe | E_mpbpe | E_mpjpe |
 |---|---|---|---|---|
 | 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 |
 | **one unified policy** | **99.7%** | **90mm** | **41mm** | **0.082** |
@@ -292,7 +292,7 @@ student under identical pushes reverses it.
 | same as training | 91.0% | 84.3% |
 | twice that | 31.7% | 23.3% |
 
-E_g is still lower for the unified policy on 11 of 14 clips. Tracking accuracy
+E_g-mpbpe is still lower for the unified policy on 11 of 14 clips. Tracking accuracy
 holds; what degrades is **recovery after being pushed**. Distillation learning
 the teachers' mean behaviour, with recovery from perturbed states rare in the
 data, is a plausible explanation but was not verified. Adding perturbation to
@@ -358,6 +358,8 @@ side by side.
 | E_g-mpbpe | mean body position error in global coordinates (mm) |
 | E_mpbpe | mean body position error after aligning on the anchor (mm) |
 | E_mpjpe | mean joint angle error (rad) |
+| E_mpbve | mean body velocity error (mm/frame) |
+| E_mpbae | mean body acceleration error (mm/frame²) |
 
 `scripts/eval_all.sh` measures, `src/eval_table.py` builds the table. Domain
 randomization is off by default and `--randomize` turns it on, matching the way
@@ -799,7 +801,7 @@ sim2sim success mostly at 100 % on the same LAFAN1, G1 and BeyondMimic, so the
 
 **What works**
 
-| | Completion | E_g | E | E_j |
+| | Completion | E_g-mpbpe | E_mpbpe | E_mpjpe |
 |---|---|---|---|---|
 | 14 experts, each on its own clip | 99.0% | 102mm | 42mm | 0.084 |
 | **one unified policy** | **99.7%** | **90mm** | **41mm** | **0.082** |
