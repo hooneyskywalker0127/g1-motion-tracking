@@ -64,9 +64,12 @@ vscale[67:73] = VEL_SCALE
 vscale[102:131] = VEL_SCALE
 vscale[189:218] = VEL_SCALE
 
-d.qpos[qadr] = ref_jp[0]
-d.qpos[0:3] = ref_bp[0, 0]
+# sim2sim.py reset_to_reference 와 같다. 관절 속도까지 레퍼런스에서 받는다 —
+# 이걸 빼면 움직이는 레퍼런스를 정지 상태에서 쫓게 되어 첫 걸음에 밀린다.
+d.qpos[0:3] = ref_bp[0, 0]        # body_names[0] 는 pelvis
 d.qpos[3:7] = ref_bq[0, 0]
+d.qpos[qadr] = ref_jp[0]
+d.qvel[vadr] = ref_jv[0]
 mujoco.mj_forward(m, d)
 
 last_action = np.zeros(nq)

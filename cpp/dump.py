@@ -26,8 +26,13 @@ fps = float(np.asarray(m["fps"]).reshape(-1)[0])
 jp, jv = m["joint_pos"], m["joint_vel"]
 bp, bq = m["body_pos_w"], m["body_quat_w"]
 # npz 의 바디 30개 중 정책이 쓰는 14개를 고른다. 이름 순서는 ONNX 가 갖고 있다.
-names = [str(x) for x in m["body_names"]] if "body_names" in m else None
-idx = [names.index(n) for n in bn] if names else list(range(len(bn)))
+# npz 는 바디 30개를 담고 이름을 적어두지 않는다. 정책이 쓰는 14개가 그중
+# 어느 것인지는 교사 ONNX 에 구워진 레퍼런스와 위치를 맞춰 찾는다
+# (src/sim2sim_student.py 가 하는 것과 같다). 로봇이 같으면 답도 같으므로
+# 한 번 구한 것을 적어 둔다 — 앞 14개를 그냥 집으면 안 된다.
+BODY_IDX = [0, 4, 10, 18, 5, 11, 19, 9, 16, 22, 28, 17, 23, 29]
+assert len(BODY_IDX) == len(bn)
+idx = BODY_IDX
 
 meta = dict(seq=SEQ, fps=fps, frames=int(jp.shape[0]),
             joint_names=jn, body_names=bn,

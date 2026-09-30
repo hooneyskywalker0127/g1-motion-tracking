@@ -166,8 +166,12 @@ int main(int argc, char** argv) {
   std::vector<double> action(nq, 0.0), last_action(nq, 0.0), pd(nq);
   for (int i = 0; i < nq; ++i) pd[i] = qdef[i];
 
-  // 레퍼런스 첫 프레임 자세로 놓는다
-  for (int i = 0; i < nq; ++i) d->qpos[qadr[i]] = ref_jp[i];
+  // 레퍼런스 첫 프레임 상태로 놓는다. sim2sim.py reset_to_reference 와 같다 —
+  // 관절 속도까지 받아야 한다. 빼면 움직이는 레퍼런스를 정지에서 쫓게 된다.
+  for (int i = 0; i < nq; ++i) {
+    d->qpos[qadr[i]] = ref_jp[i];
+    d->qvel[vadr[i]] = ref_jv[i];
+  }
   d->qpos[0] = ref_bp[0]; d->qpos[1] = ref_bp[1]; d->qpos[2] = ref_bp[2];
   d->qpos[3] = ref_bq[0]; d->qpos[4] = ref_bq[1];
   d->qpos[5] = ref_bq[2]; d->qpos[6] = ref_bq[3];
