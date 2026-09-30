@@ -671,13 +671,115 @@ lies down and the selection criterion never looked for that.
 
 ---
 
+## Model mismatch — which discrepancy breaks it
+
+There is no hardware, so sim-to-real cannot be measured. Instead, each axis on which a
+simulator can disagree with a real robot was perturbed **on its own**, to see where the
+consolidated policy fails. 14 clips, 64 rollouts per clip, domain randomization off,
+full clip length.
+
+| Axis | Completion |
+|---|---|
+| Baseline | 99.9% |
+| **Latency** 1 step (20 ms) / 2 steps | **29.6% / 0%** |
+| Torque limit ×0.85 / ×0.7 / ×0.5 | 92.6% / 56.4% / 0% |
+| Mass ×0.9 / ×1.1 / ×1.2 | 99.8% / 91.7% / 25.0% |
+| Observation noise ×1 / ×2 / ×3 | 98.4% / 78.1% / 32.5% |
+| Friction ×0.5 / ×0.7 / ×1.5 | 70.3% / 99.9% / 99.2% |
+| PD gain ×0.9 / ×1.1 | 97.8% / 100% |
+
+**Latency is the only cliff.** Every other axis degrades gradually; one step of latency
+removes 70 points. Latency was never in the domain randomization. Torque, gain, mass
+and friction were varied during training, but the policy never saw a delayed command.
+Fixing it means mixing latency into training or putting recent command history into
+the observation.
+
+The rest are one-sided. Only heavier, more slippery or weaker hurts. Higher gains are,
+if anything, safer (100% at ×1.05 and ×1.1).
+
+Errors are averaged over completed rollouts only, so **read them together with
+completion**. At torque ×0.7 the E_g-mpbpe is lower than baseline because half the
+rollouts dropped out and only the easy stretches remain.
+
+## Real-time inference loop — does it fit the 20 ms budget
+
+Since one step of latency is fatal, whether inference fits in the control period (50 Hz,
+20 ms) is a deployment condition. The MuJoCo control loop was ported to C++ (`cpp/`).
+A Python loop fed the same inputs is the control; after 1000 control steps both give
+identical root position, orientation and joint angles.
+
+| (ms, 8195 steps) | p50 | p99 | p99.9 | max |
+|---|---|---|---|---|
+| C++ inference | 0.42 | 0.99 | 1.15 | 1.51 |
+| C++ full control cycle | 0.92 | 1.52 | 1.72 | 2.29 |
+| Python full control cycle | 1.10 | 1.74 | 1.95 | 2.42 |
+
+There is close to a tenfold margin. Before starting I expected Python's tail to be
+heavier because of garbage collection. That was wrong. Python's cost is **a constant
+0.2 ms per cycle**, not a heavier tail; the network is small and the GC has nothing to do.
+
+The worst case came from the OS. In one run **both** implementations went over 20 ms,
+with the spikes clustered in one stretch. So this measurement supports "inference costs
+far less than the budget" and nothing more. It does not show that C++ guarantees real
+time; that would take real-time scheduling and CPU isolation, which were not done.
+
+## A second robot — IGRIS-C
+
+To check that the pipeline is not tied to the G1, a second humanoid is being added:
+[IGRIS-C](https://github.com/robrosinc/igris_c_description_public) (1.5 m, 58 kg,
+31 DoF). Retargeting is done so far.
+
+![retarget_igris](docs/retarget_igris.gif)
+
+The same LAFAN1 clip retargeted onto the G1 (left) and IGRIS-C (right), in one scene with
+the human skeleton in the middle. GMR also scales the root trajectory, so the G1 walks
+0.88 times the human's path. To keep them side by side, each robot's hip is moved onto
+the human's horizontal hip position every frame; poses are untouched.
+
+Adding a robot to GMR takes four things: the robot model, which human bone drives which
+link, a length ratio per body part, and a rotation offset per link. The IGRIS-C table was
+derived from the G1 one, and two things were wrong.
+
+- **Forearms.** At zero pose the G1 forearm points forward and the IGRIS-C forearm points
+  down. With the G1 offsets the elbows sat on their joint limit in 80-88% of frames.
+  Turning the elbow and wrist offsets by 90° fixed it.
+- **Leg ratio.** The IGRIS-C sole is 7.1 cm below the ankle joint, twice the G1's
+  3.5 cm. Scaling the legs by ankle height sank the feet into the floor in all 14 clips.
+  Scaling by sole height cut the clips with more than 3 cm of penetration from 14 to 4.
+  The remaining four have crouching or crawling.
+
+The model has no license file, so no IGRIS-C mesh or XML is in this repository. The
+scripts in `scripts/igris/` read a local clone and write locally.
+
+| File | What it does |
+| --- | --- |
+| `scripts/igris/prepare_mjcf.py` | MJCF for retargeting; drops 29 backlash joints and 22 finger joints |
+| `scripts/igris/prepare_urdf.py` | URDF for training; fills the placeholder torque limits from the MJCF actuators |
+| `scripts/igris/make_ik_config.py` | derives the IGRIS-C IK table from the G1 one |
+| `scripts/igris/compare_retarget.py` | compares both robots' retargets on foot penetration, joint limits and velocity spikes |
+| `scripts/igris/fit_slot_map.py` | maps IGRIS-C joints onto the G1 policy's 29 slots (below) |
+| `src/render_retarget_two.py` | renders the clip above |
+
+**The G1 policy does not run on IGRIS-C as is.** Its inputs and outputs are laid out
+for the G1's 29 joints and it learned the G1's mass and motors. Prior work,
+[Any2Any](https://arxiv.org/abs/2605.23733), maps the joints onto the original
+policy's slots and fine-tunes part of it on the new robot, beating training from
+scratch at a fraction of the compute. The same comparison is set up here. Mapping by
+joint name is wrong: the waist axes have opposite signs, the elbows zero 90° apart, and
+because the forearms point along different axes the wrist roll and yaw swap. Signs and
+offsets were fitted on the same 14 clips retargeted onto both robots; every one of the
+29 pairs correlates at |r| ≥ 0.72.
+
+---
+
 ## Layout
 
 ```
 src/       retargeting, metrics, rendering, table building
-scripts/   batch drivers
+scripts/   batch drivers (scripts/igris/ for the second robot)
 configs/   selection and training order
 docs/      figures used in this README
+cpp/       real-time inference loop (C++) and its Python control
 outputs/   motions, metrics, logs, videos (gitignored)
 data ->    symlink to local dataset root (gitignored)
 ```
@@ -743,6 +845,7 @@ comparability.
 | --- | --- |
 | [GMR](https://github.com/YanjieZe/GMR) | retargeting tool in use; MIT, takes LAFAN1 BVH and outputs G1 joint angles |
 | Isaac Sim 5.1 / Isaac Lab 2.3.2 | reference motion playback, and RL training in stage 4 |
+| [IGRIS-C model](https://github.com/robrosinc/igris_c_description_public) | the second robot; it has no license file, so it is linked, not copied |
 
 Retargeting itself needs no physics simulation — it is a kinematics problem.
 The simulator enters at playback and at policy training.
@@ -842,4 +945,12 @@ accuracy holds, so what consolidation costs is recovery, not accuracy.
    airborne fraction, foot slip and joint velocity violation instead, and
    correct penetration by measuring minimum body height per frame with forward
    kinematics and offsetting the motion — the step Retargeting Matters describes.
-4. **Hardware.** The scope here ends at simulation.
+4. **Latency in training.** One step (20 ms) of latency drops completion from 99.9%
+   to 29.6%. Mix latency into domain randomization or put command history into the
+   observation.
+5. **What each reward term holds up (in progress).** The rewards are BeyondMimic's,
+   unchanged. The tracking reward is split into three groups (anchor, body pose,
+   velocity); each is removed in turn and trained on the same clip with the same budget.
+6. **An IGRIS-C policy (in progress).** Trained from scratch versus transferred from the
+   G1 policy, on the same clip, compared against wall-clock time.
+7. **Hardware.** The scope here ends at simulation.
