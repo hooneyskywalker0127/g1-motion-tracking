@@ -11,6 +11,8 @@
   - 관절 토크 한계를 채운다. URDF 에는 effort="1000" 자리 값만 있다. MJCF 의 액추에이터
     클래스(actuator_150/120/90/60/8/7 → ±150/120/90/60/8/7 Nm)에서 관절마다 읽는다.
   - package:// 메시 경로를 절대 경로로 바꾼다.
+  - 빈 루트 base_link 와 base_joint(fixed)를 뺀다. IsaacLab 은 URDF 를 들일 때 fixed
+    관절을 부모에 합쳐서, 두면 pelvis 가 base_link 로 흡수돼 이름이 사라진다.
 URDF 에는 MJCF 의 *_backlash 관절이 없어 따로 뺄 것이 없다. 31 자유도가 남는다.
 
     python scripts/igris/prepare_urdf.py <igris 클론> <출력 urdf>
@@ -50,6 +52,11 @@ for j in root.findall("joint"):
         continue
     j.find("limit").set("effort", str(effort[name]))
     n_actuated += 1
+
+base = root.find("link[@name='base_link']")
+assert base is not None and len(base) == 0, "base_link 가 비어 있지 않다"
+root.remove(base)
+root.remove(root.find("joint[@name='base_joint']"))
 
 for mesh in root.iter("mesh"):
     mesh.set("filename", mesh.get("filename").replace("package://igris_c_description", str(src_root)))
