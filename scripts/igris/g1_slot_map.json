@@ -1,0 +1,184 @@
+{
+  "g1_joints": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+    "waist_yaw_joint",
+    "waist_roll_joint",
+    "waist_pitch_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "left_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_pitch_joint",
+    "right_wrist_yaw_joint"
+  ],
+  "map": {
+    "left_hip_pitch_joint": {
+      "igris": "l_hip_pitch",
+      "s": 1.0,
+      "c": 0.1465771986408649
+    },
+    "left_hip_roll_joint": {
+      "igris": "l_hip_roll",
+      "s": 1.0,
+      "c": -0.046719353123080065
+    },
+    "left_hip_yaw_joint": {
+      "igris": "l_hip_yaw",
+      "s": 1.0,
+      "c": 0.024675018377655455
+    },
+    "left_knee_joint": {
+      "igris": "l_knee_pitch",
+      "s": 1.0,
+      "c": -0.14190449832976376
+    },
+    "left_ankle_pitch_joint": {
+      "igris": "l_ankle_pitch",
+      "s": 1.0,
+      "c": -0.023020096935444254
+    },
+    "left_ankle_roll_joint": {
+      "igris": "l_ankle_roll",
+      "s": 1.0,
+      "c": 0.05294837776441116
+    },
+    "right_hip_pitch_joint": {
+      "igris": "r_hip_pitch",
+      "s": 1.0,
+      "c": 0.14798474228226724
+    },
+    "right_hip_roll_joint": {
+      "igris": "r_hip_roll",
+      "s": 1.0,
+      "c": 0.048375057638398
+    },
+    "right_hip_yaw_joint": {
+      "igris": "r_hip_yaw",
+      "s": 1.0,
+      "c": -0.027420092989938347
+    },
+    "right_knee_joint": {
+      "igris": "r_knee_pitch",
+      "s": 1.0,
+      "c": -0.14104579933995529
+    },
+    "right_ankle_pitch_joint": {
+      "igris": "r_ankle_pitch",
+      "s": 1.0,
+      "c": -0.027698345979228673
+    },
+    "right_ankle_roll_joint": {
+      "igris": "r_ankle_roll",
+      "s": 1.0,
+      "c": -0.05359969141107798
+    },
+    "waist_yaw_joint": {
+      "igris": "waist_yaw",
+      "s": -1.0,
+      "c": -0.0023293212359260934
+    },
+    "waist_roll_joint": {
+      "igris": "waist_roll",
+      "s": -1.0,
+      "c": 0.0019654814273728505
+    },
+    "waist_pitch_joint": {
+      "igris": "waist_pitch",
+      "s": -1.0,
+      "c": -0.021442789664873174
+    },
+    "left_shoulder_pitch_joint": {
+      "igris": "l_shoulder_pitch",
+      "s": 1.0,
+      "c": 0.01803536673014211
+    },
+    "left_shoulder_roll_joint": {
+      "igris": "l_shoulder_roll",
+      "s": 1.0,
+      "c": 0.009424647295564359
+    },
+    "left_shoulder_yaw_joint": {
+      "igris": "l_shoulder_yaw",
+      "s": 1.0,
+      "c": 0.04978367784422377
+    },
+    "left_elbow_joint": {
+      "igris": "l_elbow_pitch",
+      "s": 1.0,
+      "c": 1.568548690185619
+    },
+    "left_wrist_roll_joint": {
+      "igris": "l_wrist_yaw",
+      "s": -1.0,
+      "c": -0.03331446433301277
+    },
+    "left_wrist_pitch_joint": {
+      "igris": "l_wrist_pitch",
+      "s": 1.0,
+      "c": -0.0033302373991111467
+    },
+    "left_wrist_yaw_joint": {
+      "igris": "l_wrist_roll",
+      "s": 1.0,
+      "c": 0.004174985168398981
+    },
+    "right_shoulder_pitch_joint": {
+      "igris": "r_shoulder_pitch",
+      "s": 1.0,
+      "c": 0.013080140325179096
+    },
+    "right_shoulder_roll_joint": {
+      "igris": "r_shoulder_roll",
+      "s": 1.0,
+      "c": -0.00837171238297646
+    },
+    "right_shoulder_yaw_joint": {
+      "igris": "r_shoulder_yaw",
+      "s": 1.0,
+      "c": -0.024741991507845423
+    },
+    "right_elbow_joint": {
+      "igris": "r_elbow_pitch",
+      "s": 1.0,
+      "c": 1.567853901787467
+    },
+    "right_wrist_roll_joint": {
+      "igris": "r_wrist_yaw",
+      "s": -1.0,
+      "c": 0.035866104503734134
+    },
+    "right_wrist_pitch_joint": {
+      "igris": "r_wrist_pitch",
+      "s": 1.0,
+      "c": -0.0030461260162854414
+    },
+    "right_wrist_yaw_joint": {
+      "igris": "r_wrist_roll",
+      "s": 1.0,
+      "c": -0.0036208656665729366
+    }
+  },
+  "igris_fixed": [
+    "neck_yaw",
+    "neck_pitch"
+  ]
+}
