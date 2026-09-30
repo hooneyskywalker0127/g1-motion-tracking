@@ -1,917 +1,241 @@
 # g1-motion-tracking
 
-사람의 모션 캡처 데이터를 Unitree G1 휴머노이드로 옮기고, 그 동작을 따라가도록
-전신 제어 정책을 학습시키는 파이프라인입니다.
+사람의 모션 캡처를 휴머노이드로 옮기고, 그 동작을 따라가는 전신 제어 정책을
+학습하는 파이프라인입니다. Unitree G1 기준이며 두 번째 로봇 IGRIS-C를 붙이고 있습니다.
 
-현재 범위는 시뮬레이션까지이며, 실제 로봇 배포는 포함하지 않습니다.
+[![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
+[![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
+[![MuJoCo](https://img.shields.io/badge/MuJoCo-3.x-blue.svg)](https://mujoco.org/)
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-시작한 이유는 이렇습니다. 군집 휴머노이드 시뮬레이션을 구성하면서 NVIDIA의
-[GR00T Whole-Body Control](https://github.com/NVlabs/GR00T-WholeBodyControl)에
-들어 있는 GEAR-SONIC을 가져다 G1을 제어했습니다. 쓰는 것과 만드는 것은 아는
-것이 다릅니다. 전신 제어를 직접 만들어 보려고 이 파이프라인을 처음부터 끝까지
-구축했습니다. SONIC도 레퍼런스 모션을 따라가는 계열이라 같은 문제를 다른 손으로
-푼 셈입니다.
+[**English**](README.en.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
 
-English documentation: [README.en.md](README.en.md)
+![tracking](docs/tracking.gif)
 
-학습된 정책과 평가 결과: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)
+> **범위는 시뮬레이션까지입니다.** 하드웨어가 없어 실제 로봇 배포는 하지 않았고,
+> sim-to-real 성능을 주장하지 않습니다. Isaac Lab에서 학습하고 MuJoCo로 옮겨 검증합니다.
 
-학습 곡선: [W&B](https://wandb.ai/hooneyskywalker-humanoid/g1_distill)
+군집 휴머노이드 시뮬레이션에서 NVIDIA의
+[GEAR-SONIC](https://github.com/NVlabs/GR00T-WholeBodyControl)으로 G1을 제어해 봤는데,
+쓰는 것과 만드는 것은 아는 것이 달랐습니다. 같은 계열(레퍼런스 모션 추종)의 전신
+제어를 처음부터 끝까지 직접 만들어 보려고 시작했습니다.
 
-영상 전체: [YouTube 재생목록](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+## News
 
----
+- **[2026-09-30]** 두 번째 로봇 [IGRIS-C 리타게팅](docs/igris.md). C++ 실시간 추론 루프가 20ms 제어 예산에 10배 가까운 여유로 듭니다([견고성](docs/robustness.md)).
+- **[2026-09-29]** [모델 불일치 민감도](docs/robustness.md): 지연 한 스텝(20ms)에 완주율 99.9% → 29.6%. 평가 코드가 랜덤화를 켠 채 돌던 버그를 고쳐 비교를 바로잡았습니다. 지표 이름을 정의한 논문의 것으로 바꿨습니다.
+- **[2026-09-27]** 일반화 한계 측정: LAFAN1의 학습에 없던 63개 클립 중 완주 0개.
+- **[2026-09-24]** 단일 동작 전문가 14개를 정책 하나로 [증류](docs/pipeline.md#5단계-정책-통합). 여섯 지표 전부 같거나 낫습니다.
+- **[2026-09-14]** 교사 정책을 MuJoCo로 옮겨 검증([sim-to-sim](docs/sim2sim.md)). LAFAN1 밖의 동작([kobe](docs/kobe.md))도 학습.
+- **[2026-09-10]** LAFAN1 교사 정책 17개 학습 완료.
+- **[2026-09-02]** 첫 교사 정책. RTX 5080에서 30,000회에 8시간 38분.
 
-## 결과 한 줄
+## 목차
 
-단일 동작 전문가 14개를 정책 하나로 합쳤고, **여섯 지표 전부에서 같거나 낫습니다.**
+- [개요](#개요)
+- [결과](#결과)
+- [데모](#데모)
+- [지원 로봇](#지원-로봇)
+- [체크포인트](#체크포인트)
+- [설치](#설치)
+- [사용법](#사용법)
+- [폴더 구조](#폴더-구조)
+- [TODO](#todo)
+- [감사의 말](#감사의-말)
+- [라이선스](#라이선스)
+
+## 개요
+
+![pipeline](docs/pipeline.png)
+
+| 단계 | 하는 일 | 도구 |
+|---|---|---|
+| 1. 모션 캡처 | 사람 동작 데이터 [LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset) 77개 시퀀스, 4.6시간 | — |
+| 2. 리타게팅 | 사람 뼈대의 자세를 로봇 관절각으로 옮깁니다. 물리 없음 | [GMR](https://github.com/YanjieZe/GMR) |
+| 3. 레퍼런스 선별 | 따라갈 수 있는 모션을 고르고 50 fps npz로 만듭니다 | Isaac Sim |
+| 4. 교사 정책 | 모션 하나당 정책 하나를 강화학습으로 학습합니다 | [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking), PPO |
+| 5. 정책 통합 | 교사 14개를 학생 정책 하나로 증류합니다(DAgger) | Isaac Lab |
+| 검증 | 다른 시뮬레이터로 옮기고, 모델 불일치를 흔들고, 추론 지연을 잽니다 | MuJoCo, C++ |
+
+단계별 설명과 평가 기준은 [docs/pipeline.md](docs/pipeline.md)에 있습니다.
+
+## 결과
+
+**전문가 14개를 하나로 합쳤고, 여섯 지표 전부 같거나 낫습니다.**
 
 | | 완주율 | E_g-mpbpe | E_mpbpe | E_mpjpe | E_mpbve | E_mpbae |
 |---|---|---|---|---|---|---|
 | 전문가 14개 (각자 자기 클립) | 99.0% | 102mm | 42mm | 0.084 | 4.78 | 2.09 |
 | **통합 정책 하나** | **99.7%** | **90mm** | **41mm** | **0.082** | **4.32** | **1.91** |
 
-양쪽 모두 100 롤아웃, 도메인 랜덤화 끔, 클립 전체 길이, 같은 평가 코드입니다.
-E_g-mpbpe는 전역 바디 위치 오차(mm), E_mpbpe는 루트 정렬 오차(드리프트 빼고
-자세만), E_mpjpe는 관절각 오차(rad), E_mpbve·E_mpbae는 바디 속도·가속도 오차
-(mm/frame, mm/frame²)입니다.
-오차 항은 전부 완주한 롤아웃만 평균낸 값입니다.
+100 롤아웃, 도메인 랜덤화 끔, 클립 전체 길이, 같은 평가 코드입니다. 오차는 완주한
+롤아웃만 평균낸 값입니다. 지표 정의는 [GMR 논문](https://arxiv.org/abs/2510.02252)
+(E_g-mpbpe, E_mpbpe, E_mpjpe)과 [PBHC](https://arxiv.org/abs/2506.12851)(E_mpbve, E_mpbae)를 따릅니다.
 
-증류는 보통 정확도를 깎아먹는데 여기서는 오히려 좋아졌습니다. 14개 중 11개가
-100%이고 나머지 셋(walk1_subject1·walk2_subject3 99%, jumps1_subject1 98%)도 98% 위입니다. E_g-mpbpe는 14개 전부 학생이 낮습니다.
+되는 것과 안 되는 것을 함께 쟀습니다.
 
-딸려 나온 것은 MuJoCo 전이 12/14, 랜덤화 하 76.1%, 리셋 없는 모션 전환입니다.
-안 되는 것도 쟀습니다 — 일반화는 안 됩니다(LAFAN1의 나머지 63개 중 완주 0개).
-자세한 것은 아래 [5단계](#5단계-정책-통합)와 [정리](#정리--무엇이-되고-무엇이-안-되는가)에 있습니다.
-
----
-
-## 파이프라인
-
-![pipeline](docs/pipeline.png)
-
-1-3단계에는 물리가 없습니다. 자세를 계산하고 그중 쓸 것을 고르는 구간입니다.
-물리는 4단계에서 들어오고, 거기서부터 로봇이 스스로 버텨야 합니다.
-
-### 1단계. 사람 모션 캡처 데이터
-
-![1단계](docs/stage_1.png)
-
-사람 몸의 관절이 매 순간 어디에 있었는지를 숫자로 기록한 데이터입니다.
-영상이 아니라 "0.1초 시점에 왼쪽 무릎은 여기, 오른쪽 팔꿈치는 여기" 같은
-좌표의 나열입니다.
-
-진행 상황: LAFAN1 77개 시퀀스를 확보했습니다. 30 fps bvh, 배우 5명, 4.6시간입니다.
-
-### 2단계. 리타게팅
-
-![2단계](docs/stage_2.png)
-
-사람 기준의 관절값을 G1에 그대로 쓸 수는 없습니다. 팔다리 길이가 다르고,
-관절이 꺾이는 축도 다르며, 사람에게 있는 관절이 로봇에는 없기도 합니다.
-그래서 "어깨 각도 몇 도"를 복사하는 대신, 손끝과 발끝 위치처럼 지켜야 할
-것을 정해 두고 그것을 최대한 만족하는 로봇 관절값을 최적화로 찾습니다.
-로봇의 관절 한계를 넘지 않아야 하고, 발이 바닥을 뚫거나 뜨지 않아야 합니다.
-
-![retargeting](docs/retargeting.gif)
-
-주황색이 원본 사람 골격, 회색이 리타게팅된 G1입니다. 위아래 띠에 이 작업을
-어렵게 만드는 팔다리 길이 차이와, 로봇의 각 부위가 IK 목표에서 몇 cm
-떨어졌는지를 같이 넣었습니다. 이 영상에서 로봇이 걷고 있는 것은 아닙니다.
-매 프레임 관절값을 모델에 직접 써넣고 그린 것이고, 시뮬레이션 스텝은
-한 번도 돌지 않았습니다.
-
-진행 상황: [GMR](https://github.com/YanjieZe/GMR)로 77개 전부 리타게팅했습니다.
-총 496,672 프레임입니다. 전수 검증했습니다. NaN이나 무한대 없음, 29개 관절
-어디에도 한계 위반 없음, 프레임 수는 원본 bvh와 정확히 일치합니다.
-
-### 3단계. 레퍼런스 모션
-
-![3단계](docs/stage_3.png)
-
-리타게팅 결과가 로봇이 따라가야 할 목표 궤적이 됩니다. 이 단계까지는
-아직 로봇이 실제로 움직인 것이 아니라, 따라야 할 정답 동작만 만들어진
-상태입니다.
-
-리타게팅했다고 다 학습에 쓸 수 있는 것은 아닙니다. 여기서 쓰는 척도는 로봇의
-각 부위가 GMR의 IK가 겨냥한 목표에서 몇 cm 떨어졌는지입니다. 골반과 양 발목,
-양 손목만 봅니다. 몸통과 어깨, 고관절은 위치 가중치가 0-5라 GMR이 위치를
-맞추지 않고, MuJoCo 바디 원점이 사람 관절 중심과 달라 상수 오프셋이 섞입니다.
-
-동작 종류별 발 오차입니다. 단위는 cm입니다.
-
-```
-walk         12개  1.00      obstacles      17개  1.65
-dance         8개  1.25      sprint          2개  1.67
-aiming        5개  1.27      fallAndGetUp    6개  2.11
-run           4개  1.33      ground          5개  2.76
-```
-
-걷기가 가장 깨끗하고 바닥 동작이 가장 나쁩니다. 세 배 차이입니다. 넘어지고
-눕는 동작은 발 말고도 닿는 부위가 많은데, 발에 가중치를 둔 IK는 그런 상황을
-상정하지 않습니다. 손 오차는 동작 종류와 무관하게 5-9 cm입니다. 개별 동작의
-실패가 아니라 팔 길이 차이라서 선별 기준으로는 쓰지 않습니다.
-
-진행 상황: 발 오차 세 조건을 모두 만족하는 19개를 골랐습니다. 평균 1.2 cm
-미만, p95 3.5 cm 미만, 최대 10 cm 미만입니다. 목록은
-[`configs/selected_motions.txt`](configs/selected_motions.txt)에 있습니다.
-각각을 BeyondMimic이 읽는 50 fps npz로 변환했습니다. 이 변환이 정책 학습에
-필요한 링크 속도를 만들어냅니다. 변환 결과는 W&B registry에 올렸습니다.
-
-문턱값 자체는 원칙에서 나온 것이 아닙니다. 19개가 남는 지점을 골랐고, GMR
-논문이 21개로 실험한 것과 비슷한 규모라는 게 근거입니다. 학습을 돌려 실패하는
-시퀀스가 어느 오차대에 몰리는지 보면 그때는 근거 있는 문턱을 정할 수 있습니다.
-
-### 4단계. 모션 트래킹 정책 학습
-
-![4단계](docs/stage_4.png)
-
-강화학습으로 로봇이 그 목표를 따라가게 만듭니다. 레퍼런스 모션에 가까우면
-점수를 주고, 벗어나거나 넘어지면 점수를 깎습니다. 이 과정을 반복해 로봇이
-찾아낸 조종 방법이 정책(policy)이고, 점수 규칙이 보상(reward)입니다.
-평가 기준은 "그럴듯하게 걷는가"가 아니라 "레퍼런스를 얼마나 정확히
-따라갔는가"입니다.
-
-학습에는 [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking)을
-씁니다. GMR 논문이 정책 학습에 쓴 것과 같습니다. 모션 하나당 정책 하나를
-학습하므로 19개 시퀀스는 학습 19회를 뜻합니다. 환경 4096개, 30000회 반복, PPO입니다.
-
-그 저장소는 IsaacSim 4.5, IsaacLab 2.1.0 기준입니다. 로컬의 IsaacSim 5.1,
-IsaacLab 2.3.2, rsl-rl 3.1.2에서 돌리려면 인터페이스 세 곳을 고쳐야 합니다.
-학습 로직과는 무관합니다. `csv_to_npz.py`가 저장 뒤에도
-`while simulation_app.is_running()` 루프를 빠져나오지 않아 `--headless`에서
-끝나지 않는 것, `isaaclab.utils.io`에서 `dump_pickle`이 사라진 것, rsl-rl 3.x가
-정규화기를 러너에서 정책 안으로 옮긴 것입니다.
-
-학습한 정책을 재생하려면 같은 저장소의 `scripts/rsl_rl/play.py`에서 두 곳을
-더 고쳐야 합니다. `--motion_file`이 W&B 분기에서만 읽혀 로컬 체크포인트로
-돌리면 레퍼런스 모션이 비고, `get_observations()`가 반환하는 TensorDict를
-기존 튜플 언패킹이 배치 차원으로 쪼개 관측이 1차원이 됩니다.
-
-진행 상황: 첫 정책 walk2_subject4를 30000회까지 학습했습니다. RTX 5080에서
-8시간 38분 걸렸습니다.
-
-![tracking](docs/tracking.gif)
-
-위 이미지는 그중 6초입니다. 전체 길이는 3분 58초입니다.
-
-### 5단계. 정책 통합
-
-![5단계](docs/stage_5.png)
-
-4단계까지 하면 모션 하나당 정책 하나가 남습니다. 14개 동작을 시키려면 정책
-14개를 들고 있다가 골라 써야 합니다. 5단계는 그 14개를 정책 하나로 합칩니다.
-
-방법은 증류(distillation)입니다. 학습된 정책 14개를 교사로 두고, 학생 정책
-하나가 시뮬레이터를 직접 굴러다니면서 매 순간 "너라면 어떻게 했겠냐"를
-교사에게 물어 그 답을 따라 합니다. 교사가 다닌 길만 베끼면 학생이 조금
-벗어났을 때 돌아올 줄 모르기 때문에, 학생을 먼저 굴리고 그 자리에서 라벨을
-받습니다. 이 방식을 DAgger라고 합니다.
-
-증류 코드는 [HOVER](https://github.com/NVlabs/HOVER)의
-`neural_wbc/student_policy`를 그대로 씁니다. 트레이너, 학생 네트워크, 버퍼,
-손실을 손대지 않았고 패키지 내부 import 경로만 고쳤습니다. HOVER는 IsaacLab과
-rsl-rl을 쓰므로 이 저장소와 스택이 같습니다.
-
-HOVER는 교사가 하나인 구조라 한 곳을 바꿨습니다. 트레이너가 교사에게 관측
-텐서 하나만 넘기기 때문에(`student_policy_trainer.py`) 어느 교사를 쓸지 알릴
-통로가 관측밖에 없습니다. 그래서 교사 관측 맨 뒤에 모션 인덱스를 한 칸 붙이고,
-교사 쪽 구현이 그걸 떼어 env별로 담당 교사를 고릅니다. 관측에 선택자를 실어
-보내는 방식은 [parkour](https://github.com/ZiwenZhuang/parkour)의
-`ActorCriticFieldMutex`가 쓰는 것과 같습니다.
-
-학생에게는 모션 인덱스를 주지 않습니다. 주면 클립 번호를 외워버리고 레퍼런스를
-안 보게 됩니다. 학습에 쓰지 않은 모션도 따라가게 하려면 레퍼런스만으로
-판단해야 합니다.
-
-교사 관측은 161차원(레퍼런스 관절 58 + 앵커 오차 9 + 고유수용성 93 + 모션
-인덱스 1), 학생 관측은 260차원입니다. 학생에게는 교사에게 없는 항 100개가
-더 붙습니다 — 레퍼런스와 현재 상태의 관절각 차분 29, 관절속도 차분 29,
-앵커 프레임에서의 바디 위치 차분 42입니다. OpenTrack 학생이 레퍼런스를
-원본이 아니라 차분으로 받는 것을 따랐습니다. 원본만 주면 네트워크가 뺄셈부터
-배워야 합니다.
-
-교사는 전부 [512, 256, 128]이고 학생은 [2048, 2048, 1024, 1024, 512]입니다.
-**이 용량이 결과를 갈랐습니다.** 처음에는 [1024, 512, 256]으로 했는데 14개
-중 한 클립만 완주 9%로 남았습니다. 가설을 열여섯 개 세워 하나씩 반증한 끝에
-원인이 용량이었습니다 — 학습 에피소드를 10초에서 40초로 늘리고 망을 4배로
-키우자 최저 클립이 98.4%가 되었습니다. BumbleBee 논문이 3층 MLP로는 여러
-전문가를 담지 못한다고 적어둔 것이 이 지점입니다.
-
-교사로 쓴 것은 14개입니다. 학습한 17개 중 완주율 0%인 셋은 완주한 롤아웃이
-없어 교사로 쓸 궤적 자체가 없습니다. kobe는 일반화를 볼 대조군으로 빼두었습니다.
-
-#### 다중 클립 지원
-
-4단계 환경은 npz 하나만 물 수 있습니다. 증류는 학생이 14개 클립을 다 겪어야
-하므로 세 곳을 고쳤습니다.
-
-`MotionLoader`가 npz 리스트를 받으면 시간축으로 이어 붙이고 클립 경계를 따로
-들고 있습니다. 패딩하지 않습니다. 시간 인덱스가 계속 "이어 붙인 배열에 대한
-평탄 인덱스"로 남기 때문에 기존 인덱싱과 앵커 변환 코드가 그대로 동작합니다.
-이 배치 방식은 PHC, ProtoMotions, SONIC이 모두 같은 형태로 씁니다.
-
-env마다 지금 따라가는 클립 번호는 따로 저장하지 않고 시간 인덱스를 클립
-경계로 이진탐색해서 냅니다. 따로 들고 있으면 어긋날 수 있기 때문입니다.
-
-그리고 클립별 샘플링 확률에 상한을 뒀습니다. 실패 기반 적응 샘플링만 켜두면
-어려운 클립 하나로 확률이 쏠려 쉬운 클립을 잊습니다. SONIC이 같은 이유로
-`max_prob_per_motion`을 두고, 다양성이 중요한 학습에는 공평 몫의 2배 정도를
-쓴다고 적어두었습니다. 여기서도 2배를 기본값으로 했습니다.
-
-이 상한이 필요한 이유가 하나 더 있습니다. 14개 클립의 전체 프레임 중 walk이
-67%(107,777 / 162,049)입니다. 상한 없이 균등하게 뽑으면 통합 정책이 걷기에
-치우칩니다.
-
-#### 결과 — 열넷을 하나로 합쳤고 정확도가 깎이지 않았습니다
-
-64 롤아웃, 랜덤화 끔, 클립 전체 길이 기준입니다.
-
-| | 완주율 | E_g-mpbpe | E_mpbpe | E_mpjpe |
-|---|---|---|---|---|
-| 전문가 14개 (각자 자기 클립) | 99.0% | 102mm | 42mm | 0.084 |
-| **통합 정책 하나** | **99.7%** | **90mm** | **41mm** | **0.082** |
-
-양쪽 다 100 롤아웃, 같은 조건, 같은 평가 코드입니다. **여섯 지표 전부에서
-통합 정책이 같거나 낫습니다.** 14개 중 11개가 100% 이고 나머지 셋
-(walk1_subject1·walk2_subject3 99%, jumps1_subject1 98%)도 98% 위이며, E_g-mpbpe 는 14개 전부 통합 정책이
-낮습니다(평균 12mm 차이).
-
-딸려 나온 것이 셋입니다.
-
-- **sim-to-sim** — 같은 ONNX를 재학습·게인 재조정 없이 MuJoCo에 넣어
-  14개 중 12개가 완주합니다. 전역 오차는 5-20% 늘지만 앵커 정렬 오차는
-  오히려 MuJoCo가 낮습니다. 자세는 잘 따라가고 전역 드리프트만 쌓인다는 뜻입니다.
-- **도메인 랜덤화** — 1-3초마다 밀치고 마찰·몸통 무게중심·관절 영점·리셋
-  자세를 무작위로 바꾼 조건에서 평균 76.1%입니다. 동적인 동작일수록 많이
-  떨어집니다(달리기 43.8%, walk4 98.4%).
-- **모션 전환** — 클립 경계에서 로봇을 리셋하지 않고 레퍼런스만 다음 클립으로
-  바꿔도 13개 전환 중 6개가 넘어갑니다. 전문가 14개로는 구조적으로 못 하는
-  일입니다. 정책을 갈아끼우는 순간 로봇이 새 정책이 겪어 본 적 없는 상태에
-  있기 때문입니다.
-
-#### 되지 않는 것도 쟀습니다
-
-LAFAN1의 나머지 63개를 전부 리타게팅해 같은 정책으로 돌렸습니다. 학습은
-하지 않았습니다. 분할은 SONIC 방식을 따랐습니다. 이 표는 **64 롤아웃**입니다
-(위의 교사 대조표는 100). 완주율은 롤아웃 수와 환경 개수에 둔감한 것으로
-확인했습니다 — 같은 클립을 환경 32/64/128/256으로 재면 2%p 안에 들어옵니다.
-
-| 무엇 | 클립 | 완주율 | 생존율 |
-|---|---|---|---|
-| 학습한 14클립 | 14 | 99.89% | 100% |
-| test-repetition — 학습에 **있던** 동작군, 없던 테이크 | 35 | 0.0% | 13.4% |
-| test-content — 학습에 **없던** 동작군 | 28 | 0.0% | 8.6% |
-
-**63개 중 한 개도 끝까지 가지 못합니다.** 동작군 순서가 학습 분포와의 거리를
-그대로 따릅니다 — walk 48.9% > aiming 22.1% > dance 15.7% > run 13.8% >
-obstacles 5.1% > jumps 1.4%, 그리고 눕거나 접촉이 많은 fight·ground·
-fallAndGetUp은 3-5%가 바닥입니다.
-
-다만 14클립은 GMT(8,925클립)나 SONIC(317,189클립)보다 자릿수가 셋 아래입니다.
-이 규모에서 일반화는 처음부터 나올 수 없습니다. 레퍼런스를 조건으로 받는
-구조(motion-conditioned)는 일반화의 **필요조건이지 충분조건이 아닙니다.**
-
-#### 교란 아래에서는 전문가가 낫습니다
-
-위의 "정확도가 안 깎였다"는 깨끗한 조건에서 잰 값입니다. 밀치기만 켜고
-세기를 바꿔 가며 교사와 학생을 같은 조건에 놓으면 결과가 뒤집힙니다.
-
-| 밀치기 세기 | 전문가 14개 | 통합 정책 |
+| 무엇 | 결과 | 자세히 |
 |---|---|---|
-| 학습 때와 같은 세기 | 91.0% | 84.3% |
-| 두 배 | 31.7% | 23.3% |
-
-다만 E_g-mpbpe는 통합 정책이 14개 중 11개에서 더 낮습니다. 자세 추적 자체는 여전히
-통합 쪽이 낫고, **밀렸을 때 되돌아오는 능력만** 떨어집니다. 증류가 교사의
-평균 행동을 배우고 밀린 상태에서의 복구 행동은 데이터에 드물어 덜 배운다는
-설명이 그럴듯하지만, 확인하지는 않았습니다. DAgger 롤아웃에 교란을 넣으면
-달라질 수 있습니다.
-
-### ▶ 전체 영상 (YouTube)
-
-[![전체 영상 재생](docs/youtube_thumb.jpg)](https://youtu.be/l1M4y_Nl7oc)
-
-위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/l1M4y_Nl7oc
-
-왼쪽이 물리 위에서 도는 학습된 정책, 오른쪽이 따라가야 할 레퍼런스입니다.
-두 화면 모두 Isaac Sim이고 조명과 카메라가 같으며, 같은 모션 프레임에서
-시작해 11,909 프레임 전체를 돌립니다. 두 화면이 픽셀 단위로 겹치지는
-않습니다. 리셋마다 초기 자세에 랜덤이 들어가고, 왼쪽 로봇은 스스로 버텨야
-하는 반면 오른쪽은 프레임마다 자세를 써넣은 것이기 때문입니다.
-
-### ▶ 학습 경과 (YouTube)
-
-[![학습 경과 재생](docs/youtube_thumb_progression.jpg)](https://youtu.be/qQw8PtmXV9s)
-
-위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/qQw8PtmXV9s
-
-같은 학습의 체크포인트 다섯 개와 레퍼런스를 한 화면에 놓은 것입니다. 모션과
-시작 프레임, 카메라가 모두 같습니다. 평균 보상은 1,000회에서 14.67,
-5,000회 30.80, 10,000회 33.49, 20,000회 36.63, 30,000회 36.80입니다. 상승분
-대부분이 앞쪽에서 나오고, 뒤로 갈수록 숫자보다 얼마나 오래 버티는지에서
-갈립니다.
-
-### ▶ 도메인 랜덤화 (YouTube)
-
-[![도메인 랜덤화 재생](docs/youtube_thumb_randomization.jpg)](https://youtu.be/d61rKk675qY)
-
-위 이미지를 누르면 YouTube에서 재생됩니다 — https://youtu.be/d61rKk675qY
-
-![randomization](docs/randomization.gif)
-
-위는 그중 6초입니다. 왼쪽이 도메인 랜덤화를 켠 조건에서 도는 정책, 오른쪽이
-레퍼런스입니다. 1-3초마다 무작위로 밀치고, 마찰과 몸통 무게중심, 관절 오프셋,
-리셋 자세에도 랜덤이 들어갑니다.
-
-밀치기는 몸통 속도에 값을 더하는 이벤트라 그대로 두면 화면에 아무것도 보이지
-않습니다. 그래서 값이 들어간 순간 맞은 지점에 표시를 찍고, 미는 방향으로
-화살표를 그리고, 더해진 속도를 함께 적었습니다. 화살표는 1초 동안 남습니다.
-
-랜덤화를 켜면 정책이 레퍼런스에서 벗어나거나 에피소드가 끊길 수 있습니다.
-그때는 0프레임부터 다시 시작하므로 좌우 위상이 어긋납니다. 그것도 결과의
-일부입니다.
-
-### 평가 기준
-
-정책을 재는 방식은 GMR 논문([arXiv:2510.02252](https://arxiv.org/abs/2510.02252))을
-따릅니다. 같은 데이터셋과 같은 학습 프레임워크를 쓰는 연구라 수치를 나란히
-놓을 수 있습니다.
-
-| 지표 | 뜻 |
-| --- | --- |
-| 완주율 | 앵커 바디의 높이·방향이 임계를 넘지 않고 클립 끝까지 간 롤아웃의 비율 |
-| E_g-mpbpe | 전역 좌표에서 바디 위치 오차의 평균 (mm) |
-| E_mpbpe | 앵커 기준으로 정렬한 상대 바디 위치 오차의 평균 (mm) |
-| E_mpjpe | 관절 각도 오차의 평균 (rad) |
-| E_mpbve | 바디 속도 오차의 평균 (mm/frame) |
-| E_mpbae | 바디 가속도 오차의 평균 (mm/frame²) |
-
-측정은 `scripts/eval_all.sh`가 하고, 표는 `src/eval_table.py`가 만듭니다.
-도메인 랜덤화를 끈 조건이 기본이고 `--randomize`로 켤 수 있습니다. 논문이
-sim과 sim-dr을 나눠 보고하는 방식과 같습니다.
-
-선별한 19개 중 17개를 30,000 iteration까지 학습하고 롤아웃 100회로 평가했습니다.
-발 오차와 완주율을 나란히 놓아, 리타게팅 품질이 정책이 버티는지를 예측하는지
-봅니다.
-
-| 시퀀스 | 발 오차 (cm) | 완주율 | E_g-mpbpe (mm) | E_mpbpe (mm) | E_mpjpe (rad) |
-| --- | --- | --- | --- | --- | --- |
-| walk4_subject1 | 0.88 | 100% | 60 | 37 | 0.062 |
-| walk3_subject2 | 0.99 | 100% | 79 | 34 | 0.071 |
-| walk1_subject2 | 1.05 | 100% | 79 | 34 | 0.066 |
-| walk3_subject5 | 1.11 | 100% | 85 | 36 | 0.082 |
-| aiming1_subject1 | 0.74 | 100% | 89 | 35 | 0.080 |
-| walk1_subject5 | 1.12 | 100% | 90 | 34 | 0.069 |
-| dance2_subject3 | 0.94 | 100% | 103 | 45 | 0.104 |
-| walk2_subject1 | 0.91 | 100% | 114 | 43 | 0.101 |
-| walk1_subject1 | 0.80 | 99% | 80 | 34 | 0.066 |
-| walk2_subject4 | 0.70 | 99% | 90 | 40 | 0.085 |
-| run2_subject4 | 1.12 | 99% | 178 | 47 | 0.111 |
-| jumps1_subject1 | 1.10 | 98% | 151 | 42 | 0.104 |
-| obstacles3_subject3 | 1.19 | 98% | 162 | 54 | 0.101 |
-| walk2_subject3 | 1.15 | 96% | 129 | 50 | 0.104 |
-| walk3_subject4 | 0.88 | 0% | - | - | - |
-| obstacles2_subject1 | 0.93 | 0% | - | - | - |
-| walk3_subject1 | 1.01 | 0% | - | - | - |
-| obstacles1_subject1 | 1.07 | 미학습 |  |  |  |
-| obstacles4_subject2 | 1.19 | 미학습 |  |  |  |
-
-완주율이 0%인 셋은 완주한 롤아웃이 없어 세 지표가 정의되지 않습니다. 대신
-평균 추적 길이와 전체 롤아웃 기준 E_g-mpbpe를 적으면 이렇습니다.
-
-| 시퀀스 | 평균 추적 길이 | 전체 롤아웃 E_g-mpbpe (mm) |
-| --- | --- | --- |
-| walk3_subject4 | 88% (10,862 / 12,330 프레임) | 116 |
-| walk3_subject1 | 78% (9,606 / 12,330 프레임) | 112 |
-| obstacles2_subject1 | 18% (2,144 / 12,204 프레임) | 368 |
-
-발 오차 순위는 정책 성적을 예측하지 못했습니다. 완주율이 0%인 셋의 발 오차는
-0.88, 0.93, 1.01 cm로 중간 대역에 있고, 발 오차가 가장 큰 축인
-obstacles3_subject3(1.19 cm)은 98%로 완주합니다. E_g-mpbpe가 가장 낮은
-walk4_subject1(60 mm)도 발 오차는 0.88 cm로 최상위가 아닙니다.
-
-영상으로 보면 더 분명합니다. 종료 조건에 걸리면 에피소드가 끝나고 프레임 0부터
-다시 시작하므로, 화면에서는 로봇이 갑자기 처음 자세로 돌아갑니다.
-
-![walk3_subject1 리셋](docs/reset_walk3_subject1.gif)
-
-walk3_subject1, 195초 지점. 앵커 높이가 임계를 넘습니다.
-
-![walk3_subject4 리셋](docs/reset_walk3_subject4.gif)
-
-walk3_subject4, 218초 지점. 발목·손목 높이가 임계를 넘습니다.
-
-완주율 0%가 처음부터 못 따라간다는 뜻이 아닙니다. 3분 넘게 따라가다 한 지점에서
-걸립니다. 평균 추적 길이가 78%와 88%인 것이 그 뜻입니다.
-
-### 완주하지 못한 셋은 학습이 아니라 레퍼런스 문제입니다
-
-`src/motion_defect_census.py`로 네 가지를 다시 재면 셋이 한눈에 갈립니다.
-
-| 시퀀스 | 지면 관통 | 최대 관통 | 발 미끄럼 최대 | 공중 비율 |
-| --- | --- | --- | --- | --- |
-| obstacles2_subject1 | 0.9% | 4.2 cm | 0.35 m/s | 26.8% |
-| walk3_subject1 | 6.0% | 7.6 cm | 1.59 m/s | 0.2% |
-| walk3_subject4 | 4.3% | 4.8 cm | 1.08 m/s | 0.2% |
-| walk1_subject1 (완주) | 0.0% | 0.4 cm | 0.90 m/s | 0.0% |
-
-`obstacles2_subject1`은 프레임의 26.8%가 공중입니다. 배우가 계단을 오르는
-구간이라 평지에서는 발이 닿을 지면이 없습니다. 나머지 둘은 발이 지면을
-파고듭니다. 완주하는 `walk1_subject1`은 관통이 0%입니다.
-
-즉 정책이 못 따라간 것이 아니라 따라갈 수 없는 목표를 준 것입니다. 선별
-기준이 발 오차 하나였고, 그 기준으로는 이 셋이 중간 대역이라 통과했습니다.
-지면 관통과 공중 비율은 보지 않았습니다.
-
-### 같은 재료로 96-100%를 받은 연구는 두 가지를 더 했습니다
-
-Retargeting Matters([arXiv:2510.02252](https://arxiv.org/abs/2510.02252))는
-같은 LAFAN1, 같은 G1, 같은 BeyondMimic으로 sim 100회에서 96-100%를
-보고합니다. 논문이 그 차이를 직접 적어두었습니다.
-
-첫째, 문제가 되는 동작을 애초에 넣지 않습니다.
-
-> We do not include motions with complex interaction with the environment,
-> such as crawling or getting up from the floor
-
-이 저장소가 완주하지 못한 셋이 정확히 그 부류입니다.
-
-둘째, 관통을 측정해 보정합니다.
-
-> We fix this by running forward kinematics on the retargeted sequences,
-> storing the minimum body height at each frame, and then offsetting the
-> entire motion by the mean minimum body height
-
-이 저장소는 둘 다 하지 않았습니다. 정책 쪽 차이가 아니라 3단계에서 갈린
-차이입니다.
-
----
-
----
-
-## sim-to-sim — 다른 시뮬레이터에서도 되는가
-
-학습한 시뮬레이터에서만 도는 정책은 아무것도 증명하지 못합니다. 같은 onnx
-액터를 그대로 MuJoCo에 올려, 재학습도 미세조정도 없이 17개 시퀀스를 모션 전체
-길이로 다시 돌렸습니다.
-
-판정 기준은 하나가 아닙니다. 계보마다 다르고 재는 것도 다릅니다. 그래서 같은
-롤아웃을 두 기준으로 각각 채점했습니다. `src/score_standard.py`가 그 일을 합니다.
-
-BeyondMimic 계열은 종료 조건으로 봅니다
-(`tracking_env_cfg.py` 255-275). 셋 중 하나라도 걸리면 그 시점에 끝납니다.
-
-| 조건 | 식 | 문턱 |
-| --- | --- | --- |
-| anchor_pos | \|ref_anchor_z − rob_anchor_z\| | 0.25 |
-| anchor_ori | \|ref_gravity_z − rob_gravity_z\| | 0.8 |
-| ee_body_pos | 발목·손목 4곳 중 \|ref_rel_z − rob_z\| | 0.25 |
-
-PolySim([arXiv:2510.01708](https://arxiv.org/abs/2510.01708)) 계열은 전역 바디
-위치 오차의 평균이 한 번이라도 0.5 m를 넘으면 실패로 봅니다.
-
-세 종료 조건이 전부 z 성분만 봅니다. 수평 표류를 보지 않습니다. 반대로
-PolySim 기준은 그것을 정면으로 잡습니다. 두 기준이 다른 것을 재고 있습니다.
-
-주의할 점이 하나 있습니다. PolySim 논문 본문은 평균 바디 오차 0.5 m라고
-적었지만, 공개 코드는 바디 하나라도 커리큘럼 임계값(기본 1.5 m)을 넘는지를
-보고 기본 설정에서는 그 판정이 꺼져 있습니다. 아래 숫자는 논문 문구를 구현한
-것입니다.
-
-### 전이에 손실이 있는가
-
-학습한 Isaac과 처음 보는 MuJoCo에서 같은 정책을 굴렸습니다. 숫자가 떨어지지
-않습니다.
-
-| 지표 | Isaac | MuJoCo | 모수 |
-| --- | --- | --- | --- |
-| Success rate | 0.765 | 0.775 | 17개 |
-| Success rate (완주 0인 셋 제외) | 0.929 | 0.941 | 14개 |
-| E_g-mpbpe | 108.3 mm | 101.3 mm | 14개 |
-| E_mpjpe | 0.594 rad | 0.593 rad | 14개 |
-
-각 100회 시행입니다. 오차는 완주한 시행에서만 내므로, 완주가 0인 셋
-(`obstacles2_subject1`, `walk3_subject1`, `walk3_subject4`)은 아래 세 줄에서
-빠집니다.
-
-![sim2sim dance](docs/sim2sim_dance.gif)
-
-`dance2_subject3`에서 가장 격한 5초입니다. 왼쪽이 Isaac Lab, 오른쪽이 같은
-정책을 그대로 올린 MuJoCo입니다. 이 시퀀스는 두 시뮬레이터 값이 가장 가깝습니다
-— 완주 0.99 대 1.00, 전역 오차 104.4 대 104.3 mm입니다.
-
-아래는 그 숫자를 어떻게 냈는지입니다.
-
-두 시뮬레이터의 숫자를 나란히 놓으려면 두 열이 같은 양이어야 합니다. 그래서
-넷을 맞췄습니다.
-
-| 항목 | 맞춘 내용 |
-| --- | --- |
-| 채점기 | `src/score_standard.py` 하나. Isaac 쪽 `scripts/beyondmimic/eval_sym.py`가 같은 식을 씁니다 |
-| 교란 | 양쪽 다 `tracking_env_cfg.py`의 `MotionCommandCfg` 값. 루트 위치·자세·속도와 관절에 균등분포 |
-| 정렬 | 레퍼런스와 로봇을 같은 순간에 읽습니다 |
-| 종료 | 양쪽 다 조기 종료 없이 끝까지 굴리고, 두 판정은 사후에 계산합니다 |
-
-마지막 줄이 핵심입니다. Isaac의 종료 조건을 켜 두면 넘어지는 순간 에피소드가
-끝나서 그 뒤의 전역 오차가 기록되지 않습니다. 실패한 롤아웃이 PolySim 기준으로는
-성공으로 잡힙니다. MuJoCo는 종료가 없어 끝까지 굴러가므로 넘어지면 반드시
-0.5 m를 넘습니다. 같은 이름의 두 숫자가 다른 것을 재게 됩니다.
-
-조건은 셋입니다. sim은 교란 없는 Isaac, sim-dr은 교란을 준 Isaac 100환경,
-sim2sim은 같은 교란을 준 MuJoCo 100시행입니다. 창은 모션 전체 길이입니다.
-
-| | sim | sim-dr | sim2sim | 유지율 |
-| --- | --- | --- | --- | --- |
-| BeyondMimic 성공률 | 0.779 | 0.765 | 0.775 | 101.4 % |
-| PolySim 성공률 | 0.668 | 0.633 | 0.609 | 96.3 % |
-| 전역 바디 오차 | 105.6 mm | 108.3 mm | 101.3 mm | 106.9 % |
-| 재정렬 상대 오차 | 40.5 mm | 40.6 mm | 38.0 mm | 106.7 % |
-| 관절 각도 | 0.594 rad | 0.594 rad | 0.593 rad | 100.2 % |
-
-유지율은 성공률이 MuJoCo/Isaac, 오차가 Isaac/MuJoCo입니다. 둘 다 100%가 손실
-없음을 뜻합니다. 성능은 깎이지 않습니다.
-
-100%를 넘는 것을 MuJoCo가 더 나은 엔진이라는 뜻으로 읽으면 안 됩니다. 접촉
-처리와 솔버가 달라서 나는 차이입니다. 여기서 쓸 수 있는 문장은 손실이 없다는
-것까지입니다. 비교 대상은 PHUMA 부록 D.3의 Isaac Gym → MuJoCo 유지율
-90.5%와 93.2%입니다.
-
-시퀀스별로는 이렇습니다. 순서는 완주율 내림차순으로, 위 학습 결과 표와 같습니다.
-
-| 열 | 뜻 |
-| --- | --- |
-| S_bm | BeyondMimic 종료 조건 셋을 끝까지 안 건드린 롤아웃의 비율. 위 표의 세 임계값을 씁니다 |
-| S_poly | 전역 바디 오차 평균이 한 번도 0.5 m를 안 넘은 롤아웃의 비율. S_bm과 독립으로 판정합니다 |
-| 전역 | 전역 좌표에서 잰 바디 위치 오차의 평균 (mm). 루트가 밀리면 같이 커집니다 |
-| 상대 | 레퍼런스를 로봇 앵커로 재정렬한 뒤의 바디 위치 오차 평균 (mm). 루트 표류를 빼고 자세만 봅니다 |
-
-Isaac 열은 sim-dr(100환경), MuJoCo 열은 sim2sim(100시행)입니다. 오차는 완주한
-시행에서만 내므로 완주가 없는 셋은 정의되지 않습니다.
-
-| 시퀀스 | S_bm Isaac | S_bm MuJoCo | S_poly Isaac | S_poly MuJoCo | 전역 Isaac | 전역 MuJoCo | 상대 Isaac | 상대 MuJoCo |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `walk4_subject1` | 1.00 | 1.00 | 0.99 | 0.96 | 61.1 | 55.0 | 36.8 | 33.9 |
-| `walk3_subject2` | 1.00 | 1.00 | 1.00 | 0.99 | 83.2 | 70.3 | 34.5 | 31.1 |
-| `walk1_subject2` | 1.00 | 1.00 | 0.99 | 1.00 | 79.8 | 73.7 | 34.6 | 31.1 |
-| `walk3_subject5` | 1.00 | 0.99 | 0.88 | 0.88 | 86.5 | 88.8 | 35.7 | 37.0 |
-| `aiming1_subject1` | 0.99 | 1.00 | 0.93 | 0.86 | 89.7 | 74.2 | 35.6 | 32.4 |
-| `walk1_subject5` | 1.00 | 0.94 | 0.99 | 0.86 | 91.2 | 86.2 | 33.9 | 31.5 |
-| `dance2_subject3` | 0.99 | 1.00 | 0.99 | 1.00 | 104.4 | 104.3 | 45.4 | 42.3 |
-| `walk2_subject1` | 1.00 | 1.00 | 0.91 | 0.95 | 115.2 | 101.7 | 43.2 | 41.0 |
-| `walk1_subject1` | 1.00 | 1.00 | 0.96 | 0.99 | 77.7 | 69.3 | 33.9 | 30.6 |
-| `walk2_subject4` | 0.99 | 0.99 | 1.00 | 0.98 | 91.7 | 77.6 | 40.3 | 36.7 |
-| `run2_subject4` | 0.83 | 0.73 | 0.00 | 0.00 | 181.1 | 174.9 | 47.0 | 44.5 |
-| `jumps1_subject1` | 0.98 | 0.97 | 0.05 | 0.14 | 155.3 | 143.3 | 42.6 | 40.6 |
-| `obstacles3_subject3` | 0.58 | 0.80 | 0.62 | 0.75 | 165.6 | 160.1 | 54.7 | 51.1 |
-| `walk2_subject3` | 0.64 | 0.76 | 0.45 | 0.00 | 134.0 | 138.8 | 50.2 | 48.8 |
-| `walk3_subject4` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
-| `obstacles2_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
-| `walk3_subject1` | 0.00 | 0.00 | 0.00 | 0.00 | — | — | — | — |
-
-17개가 동작 종류로 네 덩어리로 갈립니다.
-
-걷기·조준·댄스 열 개(`walk4_subject1`부터 `walk2_subject4`까지)는 S_bm이 양쪽 다
-0.94 이상이고 S_poly도 0.86 이상입니다. 전역 61-115 mm, 상대 31-45 mm이고 네
-지표 모두 Isaac과 MuJoCo가 붙어 있습니다.
-
-달리기와 점프(`run2_subject4`, `jumps1_subject1`)는 S_bm이 0.73-0.98로 높은데
-S_poly가 0.00-0.14입니다. 넘어져서 실패하는 것이 아니라 자리가 밀려서
-실패합니다. 전역 오차도 155-181 mm로 17개 중 가장 큽니다. 빠른 동작일수록
-방향 오차가 긴 클립에 걸쳐 누적됩니다. 기준 하나만 쓰면 이 현상이 안 보입니다.
-
-`obstacles3_subject3`과 `walk2_subject3`은 S_bm이 Isaac 0.58·0.64에서 MuJoCo
-0.80·0.76으로 올라갑니다. Isaac 안쪽이 더 까다로운 구간이 있다는 뜻이고 전이가
-나빠지는 방향이 아닙니다. 다만 `walk2_subject3`은 S_poly가 0.45에서 0.00으로
-떨어집니다. 17개 중 MuJoCo가 확실히 나쁜 유일한 칸입니다.
-
-완주가 0인 셋은 오차가 정의되지 않습니다. `obstacles2_subject1`은 클립의
-8.6%만 버티는 미수렴 정책이고, `walk3_subject1`과 `walk3_subject4`는 77-87%까지
-가다가 막판에 걸립니다. LAFAN1 후반의 앉기·눕기 구간을 선별이 걸러내지
-못했습니다. 같은 LAFAN1·G1·BeyondMimic으로 Retargeting Matters가 96-100%를
-받으므로, 이 셋은 전이 문제가 아니라 학습과 모션 선별의 문제입니다.
-
-전체를 관통하는 것이 셋입니다. 첫째, MuJoCo가 Isaac보다 나쁜 칸은 오차를 낸
-14개 중 셋뿐입니다. 전역이 `walk3_subject5`와 `walk2_subject3`, 상대가
-`walk3_subject5`이고 나머지는 전부 MuJoCo가 같거나 낫습니다. 둘째, 오차의
-크기는 시뮬레이터가 아니라 동작 난이도가 정합니다. 걷기 61-115 mm, 장애물과
-댄스 104-166 mm, 점프와 달리기 155-181 mm 순입니다. 셋째, 실패 원인이 둘로
-갈립니다. S_bm이 낮으면 넘어진 것이고 학습과 모션 선별의 문제이며, S_poly만
-낮으면 긴 클립에서 방향 오차가 쌓인 것입니다.
-
-두 채점기가 같은 값을 내는지 먼저 대조했습니다. Isaac의 env 0 롤아웃을 통째로
-남겨 MuJoCo 채점기로 다시 채점하고 온라인 값과 맞댔더니 다섯 지표가 소수점
-넷째 자리까지 일치했습니다. 남은 차이는 덤프가 float16이라 생긴 것입니다.
-이 대조를 통과하기 전에는 두 열을 같은 표에 올리지 않았습니다.
-
-![sim2sim](docs/sim2sim.gif)
-
-위는 walk2_subject4의 6초입니다. 왼쪽이 Isaac Lab, 오른쪽이 같은 정책을 올린
-MuJoCo입니다. 두 화면은 같은 순간에서 시작해 같은 순간에 끝납니다.
-
-### 자세는 넘어가고 위치는 안 넘어갑니다
-
-관절 각도 오차는 Isaac 0.594 rad, MuJoCo 0.593 rad입니다. 자세는 사실상 손실
-없이 넘어갑니다.
-
-넘어가지 않는 것은 위치입니다. MuJoCo 전역 바디 오차 101.3 mm를 로봇 앵커에
-재정렬하면 38.0 mm로 떨어집니다. 오차의 62%가 자세가 아니라 루트의 위치·방향
-표류라는 뜻입니다. 같은 표류가 Isaac에서도 나타나므로(108.3 → 40.6 mm) MuJoCo의
-문제가 아닙니다.
-
-### 완주하지 못한 셋
-
-17개 중 14개가 전체 길이를 완주합니다. 나머지 셋은 위 표 B에 0으로 나오는
-`obstacles2_subject1`, `walk3_subject1`, `walk3_subject4`이고, 성격이 다릅니다.
-앞의 하나는 클립의 8.6%만 살아남는 미수렴 정책이고, 뒤의 둘은 77-87%까지 가다가
-막판에 걸립니다. LAFAN1 클립 후반부에 배우가 앉거나 눕는 구간이 있는데 선별
-기준이 그것을 보지 않았습니다.
-
-### 코드
-
-지표 정의도 맞췄습니다. 상대 오차를 처음에는 각자의 골반을 빼서 냈는데, Isaac
-쪽은 torso_link를 앵커로 잡고 yaw까지 재정렬한 `body_pos_relative_w`를 씁니다
-(`commands.py` 284-294). 서로 다른 양이라 나란히 놓을 수 없었습니다.
-
-| 파일 | 하는 일 |
-| --- | --- |
-| `src/sim2sim.py` | onnx 액터를 MuJoCo에서 돌립니다 |
-| `src/score_standard.py` | 같은 롤아웃을 두 기준으로 채점합니다 |
-| `src/sim2sim_polysim.py` | PolySim의 다섯 지표를 계산합니다 |
-| `src/sim2sim_trials.py` | 시퀀스마다 N회 시행합니다. 교란은 Isaac 규격과 같습니다 |
-| `src/sym_table.py` | 세 조건을 모아 표 A·B·C를 냅니다 |
-| `src/sym_table_png.py` | 같은 표를 그림 파일로 냅니다 |
-| `scripts/sym_all.sh` | 17개를 세 조건으로 다시 잽니다 |
-| `scripts/make_video_pair.sh` | 두 화면을 같은 순간에 맞춰 렌더합니다 |
-
----
-
-## 모델 불일치 — 어느 어긋남에 약한가
-
-하드웨어가 없어서 sim-to-real은 잴 수 없습니다. 대신 시뮬레이터와 실제가 어긋날 수
-있는 축을 **하나씩 따로** 흔들어 통합 정책이 어디서 무너지는지 쟀습니다.
-14클립, 클립당 64 롤아웃, 도메인 랜덤화 끔, 클립 전체 길이입니다.
-
-| 축 | 완주율 |
+| 학습한 14클립 | 완주 99.7% | [pipeline](docs/pipeline.md#5단계-정책-통합) |
+| 학습에 없던 LAFAN1 63클립 | **완주 0개** — 일반화는 안 됩니다 | [pipeline](docs/pipeline.md#되지-않는-것도-쟀습니다) |
+| 밀치기(학습과 같은 세기) | 전문가 91.0%, 통합 84.3% — 복구력은 전문가가 낫습니다 | [pipeline](docs/pipeline.md#교란-아래에서는-전문가가-낫습니다) |
+| 도메인 랜덤화 켠 채 | 76.1% | [pipeline](docs/pipeline.md#5단계-정책-통합) |
+| MuJoCo로 전이 | 14개 중 12개 완주 | [sim2sim](docs/sim2sim.md) |
+| 제어 지연 1스텝(20ms) | **29.6%** — 가장 치명적 | [robustness](docs/robustness.md) |
+| 토크 ×0.7 / 질량 ×1.2 / 마찰 ×0.5 | 56.4% / 25.0% / 70.3% | [robustness](docs/robustness.md) |
+| 추론 지연 p99.9 (C++) | 1.15ms, 예산 20ms | [robustness](docs/robustness.md#실시간-추론-루프--20ms-예산-안에-드는가) |
+
+## 데모
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/retargeting.gif" width="360"/><br/>리타게팅 (사람 → G1)</td>
+    <td align="center"><img src="docs/tracking.gif" width="360"/><br/>추종 정책 (Isaac Lab)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/sim2sim.gif" width="360"/><br/>sim-to-sim (Isaac Lab | MuJoCo)</td>
+    <td align="center"><img src="docs/randomization.gif" width="360"/><br/>도메인 랜덤화</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/kobe.gif" width="360"/><br/>LAFAN1 밖의 동작 (ASAP kobe)</td>
+    <td align="center"><img src="docs/retarget_igris.gif" width="360"/><br/>같은 클립, 두 로봇 (G1 | 사람 | IGRIS-C)</td>
+  </tr>
+</table>
+
+전체 영상: [전체 클립](https://youtu.be/l1M4y_Nl7oc) · [학습 경과](https://youtu.be/qQw8PtmXV9s) · [도메인 랜덤화](https://youtu.be/d61rKk675qY) · [재생목록](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+
+## 지원 로봇
+
+| 로봇 | 자유도 | 키 / 무게 | 리타게팅 | 교사 학습 | 통합 | sim-to-sim |
+|---|---|---|---|---|---|---|
+| Unitree G1 | 29 | 1.32m / 35kg | ✅ LAFAN1 77개 | ✅ 17개 | ✅ 14 → 1 | ✅ MuJoCo |
+| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | 진행 중 | — | — |
+
+IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://arxiv.org/abs/2605.23733))과
+처음부터 학습하는 것을 비교하고 있습니다. 모델 파일에 라이선스가 없어 저장소에 복사하지 않고
+원 저장소를 링크합니다. 자세한 것은 [docs/igris.md](docs/igris.md).
+
+## 체크포인트
+
+[Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)에 있습니다.
+
+| 폴더 | 내용 |
 |---|---|
-| 기준 | 99.9% |
-| **지연** 1스텝(20ms) / 2스텝 | **29.6% / 0%** |
-| 토크 한계 ×0.85 / ×0.7 / ×0.5 | 92.6% / 56.4% / 0% |
-| 질량 ×0.9 / ×1.1 / ×1.2 | 99.8% / 91.7% / 25.0% |
-| 관측 잡음 ×1 / ×2 / ×3 | 98.4% / 78.1% / 32.5% |
-| 마찰 ×0.5 / ×0.7 / ×1.5 | 70.3% / 99.9% / 99.2% |
-| PD 게인 ×0.9 / ×1.1 | 97.8% / 100% |
+| `student/` | 통합 정책 하나(`final_model.pt`, `policy.onnx`)와 평가 결과. 은닉 [2048, 2048, 1024, 1024, 512], 관측 260, 행동 29 |
+| `policies/<시퀀스>/` | 클립별 교사 정책 17개(`model_29999.pt`, `policy.onnx`) |
+| `eval/`, `eval_polysim/`, `sym/` | 교사 평가, MuJoCo 전이 평가 |
 
-**지연만 절벽입니다.** 다른 축은 완만하게 무너지는데 지연은 한 스텝에 70%p가
-빠집니다. 도메인 랜덤화 항목에 지연이 없었기 때문입니다. 토크·게인·질량·마찰은
-학습 중에 흔들어 줬지만 지연은 한 번도 겪게 하지 않았습니다. 고치려면 학습에
-지연을 섞거나 과거 명령 이력을 관측에 넣어야 합니다.
+학습 곡선은 [W&B](https://wandb.ai/hooneyskywalker-humanoid)에 있습니다. 교사는
+`g1-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `g1_distill` 프로젝트의
+`final` 그룹입니다.
 
-나머지는 방향이 한쪽입니다. 무거워지는 쪽, 미끄러운 쪽, 토크가 모자란 쪽만
-위험하고, 게인은 오히려 높은 쪽이 안전합니다(×1.05·×1.1에서 100%).
+## 설치
 
-오차는 완주한 롤아웃만 평균낸 값이라 **완주율과 같이 읽어야 합니다.** 토크 ×0.7의
-E_g-mpbpe가 기준보다 낮은 것은 절반이 탈락해 쉬운 구간만 남았기 때문입니다.
+환경이 셋입니다.
 
-## 실시간 추론 루프 — 20ms 예산 안에 드는가
+| 용도 | 환경 | 설치 |
+|---|---|---|
+| 리타게팅 (1-2단계) | conda `gmr`, Python 3.10 | `bash scripts/setup_gmr.sh` |
+| 학습·평가 (3-5단계) | Isaac Sim 5.1, Isaac Lab 2.3.2, rsl-rl 3.1.2 | [Isaac Lab 설치 안내](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html) 후 BeyondMimic 설치 |
+| sim-to-sim, C++ 루프 | MuJoCo 3.x, ONNX Runtime | `pip install mujoco onnxruntime`, C++ 빌드는 [cpp/README.md](cpp/README.md) |
 
-지연 한 스텝이 치명적이므로 추론이 제어 주기(50Hz, 20ms) 안에 드는지가 배포의
-조건이 됩니다. MuJoCo 제어 루프를 C++로 옮겨 쟀습니다(`cpp/`). 파이썬 루프를 같은
-입력으로 돌려 대조군으로 두었고, 1000 제어 스텝 뒤 두 구현의 루트 위치·자세·관절각이
-완전히 같습니다.
+학습은 BeyondMimic을 로컬에서 고쳐 씁니다. 원 저장소는 Isaac Sim 4.5 / Isaac Lab 2.1
+기준이라 인터페이스 다섯 곳을 고쳤고, 고친 곳은 [docs/pipeline.md](docs/pipeline.md#4단계-모션-트래킹-정책-학습)에
+적었습니다. 증류와 평가 코드를 포함한 그 포크는 아직 공개하지 않았습니다.
 
-| (ms, 8195 스텝) | p50 | p99 | p99.9 | 최대 |
-|---|---|---|---|---|
-| C++ 추론 | 0.42 | 0.99 | 1.15 | 1.51 |
-| C++ 제어 주기 전체 | 0.92 | 1.52 | 1.72 | 2.29 |
-| 파이썬 제어 주기 전체 | 1.10 | 1.74 | 1.95 | 2.42 |
+스크립트에 로컬 경로(`/home/sehoon/...`)가 박혀 있어 그대로 복제해 돌리기는 아직
+어렵습니다([TODO](#todo)).
 
-예산 대비 열 배 가까운 여유가 있습니다. 착수 전에는 "파이썬은 GC 때문에 꼬리가
-두꺼울 것"이라고 예상했는데 틀렸습니다. 파이썬의 손해는 꼬리가 아니라 **주기당
-0.2ms의 상수 오버헤드**입니다. 망이 작아서 GC가 일할 게 없습니다.
+## 사용법
 
-최악값을 만든 것은 OS였습니다. 한 회차에서 **두 구현 모두** 20ms를 넘겼고,
-스파이크는 한 구간에 몰려 있었습니다. 그래서 이 측정으로 할 수 있는 말은 "추론
-비용이 예산보다 작다"까지입니다. "C++이라서 실시간이 보장된다"고는 말할 수 없고,
-그러려면 실시간 스케줄링과 CPU 격리가 필요한데 하지 않았습니다.
+**1. 리타게팅** — LAFAN1 bvh를 G1 관절각으로 바꿉니다.
+```bash
+bash scripts/retarget_all.sh                      # data/lafan1/*.bvh -> outputs/retarget/*.pkl
+python src/pkl_to_csv.py --src outputs/retarget --dst outputs/csv
+```
 
-## 두 번째 로봇 — IGRIS-C
+**2. 레퍼런스 모션** — csv를 물리 시뮬레이터에서 재생해 50 fps npz로 만듭니다.
+```bash
+bash scripts/npz_all.sh                           # BeyondMimic scripts/csv_to_npz.py
+```
 
-파이프라인이 G1에 묶여 있지 않은지 보려고 두 번째 휴머노이드
-[IGRIS-C](https://github.com/robrosinc/igris_c_description_public)(1.5m, 58kg,
-31자유도)를 붙이고 있습니다. 지금은 리타게팅까지 했습니다.
+**3. 교사 정책 학습** — 클립 하나에 정책 하나.
+```bash
+python scripts/rsl_rl/train.py --headless --task=Tracking-Flat-G1-v0 \
+    --motion_file <시퀀스>.npz --run_name <시퀀스>                    # 4096 env, 30,000회
+```
 
-![retarget_igris](docs/retarget_igris.gif)
+**4. 증류** — 교사 14개를 학생 하나로.
+```bash
+python scripts/distill/train_student.py --headless --seqs configs/distill_seqs.txt \
+    --student_hidden 2048 2048 1024 1024 512 --max_iteration 50000
+```
 
-같은 LAFAN1 클립을 G1(왼쪽)과 IGRIS-C(오른쪽)로 리타게팅한 결과를 가운데의 사람
-골격과 한 장면에 놓았습니다. GMR은 골반 궤적도 비율만큼 줄여서 G1은 사람 경로의
-0.88배만 걷습니다. 나란히 보이도록 매 프레임 골반의 수평 위치를 사람 것에 맞췄고,
-자세는 손대지 않았습니다.
+**5. 평가** — 100 롤아웃, 랜덤화 끔, 클립 전체 길이.
+```bash
+python scripts/distill/eval_student.py --headless --checkpoint <학생.pt> \
+    --seqs configs/distill_seqs.txt --num_envs 100 --out eval.json
+```
+불일치 조건은 `--action_delay 1`, `--torque_scale 0.7`, `--mass_scale 1.2` 같은 인자를 하나씩 켭니다.
 
-GMR에 로봇을 추가하는 데 필요한 것은 네 가지입니다. 로봇 모델, 사람 뼈와 로봇
-링크의 짝, 부위별 길이 비율, 링크별 회전 오프셋입니다. IGRIS-C 표는 G1 표에서
-만들었고 두 군데가 틀렸습니다.
+**6. sim-to-sim** — 학생 정책을 MuJoCo에서 돌립니다.
+```bash
+python src/sim2sim_student.py walk4_subject1 --onnx student/policy.onnx --video out.mp4
+```
 
-- **팔뚝.** 영자세에서 G1 팔뚝은 앞을, IGRIS-C 팔뚝은 아래를 향합니다. 같은
-  오프셋을 쓰면 팔꿈치가 80-88% 프레임에서 관절 한계에 붙습니다. 팔꿈치·손목
-  오프셋을 90° 돌려 고쳤습니다.
-- **다리 비율.** IGRIS-C 발바닥은 발목 관절에서 7.1cm 아래로, G1(3.5cm)의
-  두 배입니다. 발목 높이로 비율을 잡았더니 14클립 전부에서 발이 바닥에 박혔습니다.
-  발바닥 높이로 잡자 3cm 넘게 박히는 클립이 14개에서 4개로 줄었습니다. 남은
-  넷은 웅크리거나 기는 구간이 있는 클립입니다.
+**7. 실시간 루프** — C++ 추론 루프의 지연을 잽니다. [cpp/README.md](cpp/README.md)
 
-모델에 라이선스 파일이 없어서 IGRIS-C의 메시와 XML은 이 저장소에 넣지 않았습니다.
-`scripts/igris/`의 스크립트가 로컬 클론에서 읽어 로컬에 씁니다.
-
-| 파일 | 하는 일 |
-| --- | --- |
-| `scripts/igris/prepare_mjcf.py` | 리타게팅용 MJCF. 백래시 관절 29개와 손가락 관절 22개를 뺍니다 |
-| `scripts/igris/prepare_urdf.py` | 학습용 URDF. 공개 URDF의 자리 값 토크 한계를 MJCF 액추에이터 값으로 채웁니다 |
-| `scripts/igris/make_ik_config.py` | G1 IK 표에서 IGRIS-C 표를 만듭니다 |
-| `scripts/igris/compare_retarget.py` | 두 로봇의 리타게팅을 발 관통·관절 한계·속도 튐으로 비교합니다 |
-| `scripts/igris/fit_slot_map.py` | IGRIS-C 관절을 G1 정책의 29 슬롯에 대응시킵니다(아래) |
-| `src/render_retarget_two.py` | 위 영상을 렌더합니다 |
-
-**G1 정책은 IGRIS-C에서 그대로 돌지 않습니다.** 입출력이 G1의 관절 29개로 짜여
-있고 G1의 질량과 모터에 맞춰 학습됐습니다. 선행 연구
-[Any2Any](https://arxiv.org/abs/2605.23733)는 관절을 원래 정책의 슬롯에 맞춘 뒤
-일부만 새 로봇에서 미세조정해, 처음부터 학습하는 것보다 적은 연산으로 앞섰습니다.
-같은 비교를 준비해 두었습니다. 슬롯 대응은 이름으로 짝지으면 틀립니다. 허리 축은
-부호가 반대이고, 팔꿈치 영점은 90° 다르며, 손목은 팔뚝 방향이 달라 roll과 yaw가
-엇갈립니다. 같은 14클립을 두 로봇으로 리타게팅한 결과에서 부호와 영점을 맞췄고,
-29개 관절 모두 상관 절댓값이 0.72 이상입니다.
-
----
+3-5단계의 스크립트는 BeyondMimic 포크 쪽에 있습니다.
 
 ## 폴더 구조
 
 ```
-src/       리타게팅·지표·렌더·표 생성 코드
-scripts/   배치 실행 스크립트 (scripts/igris/ 는 두 번째 로봇)
-configs/   선별 목록·학습 순서
-docs/      이 문서에 쓰는 그림
-cpp/       실시간 추론 루프(C++)와 파이썬 대조군
-outputs/   생성 결과 (gitignored)
-data ->    데이터 심볼릭 링크 (gitignored)
+src/        리타게팅, 지표, 렌더, 표 생성, sim-to-sim (MuJoCo)
+scripts/    배치 실행 스크립트
+  igris/    두 번째 로봇: 모델 준비, IK 표, 관절 대응
+cpp/        실시간 추론 루프(C++)와 파이썬 대조군
+configs/    선별 목록, 학습 순서
+docs/       단계별 상세 문서와 이 README의 그림
+outputs/    생성 결과 (gitignored)
+data ->     데이터 심볼릭 링크 (gitignored)
 ```
 
-| 스크립트 | 하는 일 |
-| --- | --- |
-| `scripts/retarget_all.sh` | LAFAN1 77개를 G1으로 리타게팅 |
-| `scripts/build_youtube_memo.py` | 시퀀스별 유튜브_메모.md 재조립 |
-| `scripts/quality_all.sh` | 시퀀스별 IK 목표 추적 오차 측정 |
-| `scripts/render_compare.sh` | 사람 골격과 로봇을 한 영상에 렌더 |
-| `scripts/npz_all.sh` | 선별한 시퀀스를 npz로 변환해 registry에 업로드 |
-| `scripts/train_chain.sh` | 시퀀스를 순서대로 하나씩 학습 |
-| `scripts/eval_all.sh` | 학습된 정책의 완주율과 추적 오차 측정 |
-| `scripts/render_tracking.sh` | 학습된 정책과 레퍼런스를 좌우로 렌더해 합성 |
-| `scripts/make_pipeline_figure.py` | 이 문서의 파이프라인 그림 생성 |
-| `src/eval_table.py` | 평가 결과를 발 오차 옆에 놓아 표로 만듦 |
+| 문서 | 내용 |
+|---|---|
+| [docs/pipeline.md](docs/pipeline.md) | 1-5단계 상세, 평가 기준, 완주하지 못한 클립의 원인 |
+| [docs/sim2sim.md](docs/sim2sim.md) | MuJoCo 전이, 두 가지 합격 기준, 전이 손실 |
+| [docs/robustness.md](docs/robustness.md) | 모델 불일치 민감도, 실시간 추론 루프 |
+| [docs/igris.md](docs/igris.md) | 두 번째 로봇 리타게팅과 관절 대응 |
+| [docs/kobe.md](docs/kobe.md) | 배경, LAFAN1 밖의 동작 |
+| [docs/data.md](docs/data.md) | 데이터 출처와 선택 이유 |
 
-## 데이터
+## TODO
 
-모션 데이터는 수십 기가바이트라 저장소에 포함하지 않습니다.
-로컬의 `/home/sehoon/data` 아래에 두고 `data` 심볼릭 링크로 접근합니다.
+- [x] LAFAN1 77개 리타게팅, 교사 정책 17개
+- [x] 교사 14개 → 통합 정책 하나 (증류)
+- [x] MuJoCo sim-to-sim
+- [x] 일반화·교란·모델 불일치 한계 측정
+- [x] C++ 실시간 추론 루프
+- [x] 두 번째 로봇 IGRIS-C 리타게팅
+- [ ] 보상 항 ablation — 추종 보상 세 묶음을 하나씩 빼고 비교 (진행 중)
+- [ ] IGRIS-C 정책 — 처음부터 학습 vs G1 정책에서 옮기기 (진행 중)
+- [ ] 학습에 지연 넣기 — 도메인 랜덤화에 지연, 또는 명령 이력을 관측에
+- [ ] 학습 모션 14 → 60개, 나머지를 held-out으로
+- [ ] DAgger 롤아웃에 교란 넣기 (복구력)
+- [ ] 리타게팅 선별 기준 다시 잡기 — 지면 관통, 발 미끄럼, 관절속도 위반
+- [ ] 로컬 경로를 떼어 내 복제해 돌릴 수 있게
+- [ ] 실제 로봇
 
-### 주 입력 — LAFAN1
+## 감사의 말
 
-리타게팅의 입력으로 [LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset)을
-사용합니다. 4.6시간, 77개 시퀀스, 5명, 30 fps BVH 형식입니다. 규모가 더 큰
-후보들 대신 선택한 이유는 세 가지입니다.
+- [GMR](https://github.com/YanjieZe/GMR) (MIT) — 리타게팅. 두 번째 로봇의 IK 표도 G1 표에서 만들었습니다.
+- [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking) (MIT) — 교사 정책 학습 코드와 보상 설계.
+- [Isaac Lab](https://github.com/isaac-sim/IsaacLab), [rsl_rl](https://github.com/leggedrobotics/rsl_rl), [MuJoCo](https://github.com/google-deepmind/mujoco).
+- [LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset) — 모션 데이터. [ASAP](https://github.com/LeCAR-Lab/ASAP) — kobe 모션.
+- Unitree G1 모델은 BeyondMimic이 쓰는 `unitree_description`, IGRIS-C 모델은 [robrosinc/igris_c_description_public](https://github.com/robrosinc/igris_c_description_public)(라이선스 표기 없음, 복사하지 않음).
+- 평가와 비교의 기준: [Retargeting Matters (GMR)](https://arxiv.org/abs/2510.02252), [PBHC](https://arxiv.org/abs/2506.12851), [PolySim](https://arxiv.org/abs/2510.01708), [Any2Any](https://arxiv.org/abs/2605.23733), [GEAR-SONIC](https://arxiv.org/abs/2511.07820).
 
-1. 형식. BVH는 사용할 리타게팅 도구가 그대로 받으므로, 중간에 몸 모델을
-   맞추는 변환 단계가 필요 없습니다.
-2. 비교 가능성. 선행 연구가 LAFAN1의 21개 시퀀스에 대해 네 가지 리타게팅
-   방법의 추적 성공률을 공개했습니다. 따라서 결과를 주장하는 대신 알려진
-   수치와 대조할 수 있습니다.
-3. 동작의 폭. 5초에서 2분까지 이어지며 걷기·회전부터 격투·춤까지 포함해,
-   리타게팅이 감당하는 구간과 깨지는 구간을 나누어 볼 수 있습니다.
+## 라이선스
 
-[공식 저장소](https://github.com/ubisoft/ubisoft-laforge-animation-dataset/blob/master/lafan1/lafan1.zip)에서
-`lafan1.zip`을 받아 `data/lafan1`에 풉니다. bvh 77개가 그 아래 평평하게 놓입니다.
-
-### 참고용 — 이미 리타게팅된 G1 모션
-
-이들은 G1으로 리타게팅이 이미 끝난 결과물입니다. 입력도 아니고 정답지도
-아닙니다. 다른 방법의 출력이므로, 관절각을 맞대어 보면 두 방법이 얼마나
-갈리는지가 나올 뿐 어느 쪽의 오차인지는 알 수 없습니다. 눈으로 참고하는
-용도로만 둡니다.
-
-| 데이터셋 | 내용 | 로컬 경로 |
-| --- | --- | --- |
-| lvhaidong/LAFAN1_Retargeting_Dataset | LAFAN1을 G1으로 리타게팅한 결과 | `data/lafan1_g1_ref` |
-| bones-studio/seed | Vicon 모션 142,220개, 사람과 G1 양쪽 | `data/bones_seed` |
-
-SEED는 나중을 위해 보류합니다. LAFAN1보다 크고 배우의 실측 신체 치수가 함께
-제공되지만, 사람 쪽 데이터가 자체 형식이라 리타게팅 도구와 호환되는지
-확인되지 않았고 공개된 비교 기준도 없습니다. 파이프라인이 돌아간 뒤에
-쓸모가 생깁니다.
-
-AMASS는 규모가 비교 가능성보다 중요해지는 학습 단계에서 사용합니다.
-
-## 도구
-
-| 도구 | 역할 |
-| --- | --- |
-| [GMR](https://github.com/YanjieZe/GMR) | 사용 중인 리타게팅 도구. MIT, LAFAN1 bvh를 받아 G1 관절각을 낸다 |
-| Isaac Sim 5.1 / Isaac Lab 2.3.2 | 레퍼런스 모션 재생, 4단계 강화학습 |
-| [IGRIS-C 모델](https://github.com/robrosinc/igris_c_description_public) | 두 번째 로봇. 라이선스 파일이 없어 이 저장소에 복사하지 않고 링크만 둡니다 |
-
-리타게팅 자체는 물리 시뮬레이션이 필요 없는 기구학 문제입니다.
-시뮬레이터는 레퍼런스 모션 재생과 정책 학습 단계에서 사용합니다.
-
-## 배경
-
-리타게팅 품질을 별도의 문제로 다루는 근거는 Retargeting Matters: General
-Motion Retargeting for Humanoid Motion Tracking([arXiv:2510.02252](https://arxiv.org/abs/2510.02252))입니다.
-리타게팅 결과에 남은 결함, 즉 발 미끄러짐·자기 충돌·물리적으로 불가능한
-자세가 그것으로 학습한 추적 정책의 안정성을 떨어뜨린다는 것을 보였습니다.
-
-### kobe — LAFAN1 밖의 동작에서도 되는가
-
-위 17개는 전부 LAFAN1의 보행·댄스입니다. 고난도 단발 동작이 없어, ASAP
-데이터셋의 kobe 모션 하나를 `src/asap_to_csv.py`로 변환해 같은 파이프라인에
-태웠습니다. 206프레임, 4.1초입니다.
-
-![kobe](docs/kobe.gif)
-
-4.1초 전체입니다. 왼쪽이 Isaac Lab, 오른쪽이 MuJoCo입니다. MuJoCo 100시행에서
-BeyondMimic 성공률 1.000, PolySim 성공률 0.990, 전역 바디 오차 128.0 mm입니다.
-여기서도 전이 손실은 없습니다.
-
-오해를 막기 위해 적습니다. 이 클립은 kobe 전용 정책으로 돌렸습니다. 17개를
-학습한 정책이 kobe를 따라간 것이 아닙니다. 이 파이프라인은 모션 하나당 정책
-하나라 kobe도 따로 30,000 iteration을 학습했습니다. 즉 여기서 보인 것은 전이이지
-일반화가 아닙니다.
-
-그래서 이 클립이 뒷받침하는 것은 하나뿐입니다. 전이가 잘 되는 것이 LAFAN1이라는
-데이터셋의 특성 때문은 아니라는 것입니다. 다른 데이터셋의 4초짜리 빠른 동작에서도
-같은 결과가 나옵니다. 한 개는 표본이 아니므로 그 이상은 주장하지 않습니다.
-
-이 클립이 값을 갖는 자리는 따로 있습니다. 여러 모션을 하나의 정책으로 합치고
-나면, kobe를 학습에 넣지 않은 채로 돌려 일반화를 잴 수 있습니다. 다른 데이터셋,
-학습에 없는 동작 종류, 짧고 빠른 구간이라 학습 분포 밖이라는 것이 분명합니다.
-
-세 번 학습한 끝에 나온 값입니다. 앞의 두 번은 csv 관절 순서를 URDF가 아닌
-Isaac 순서로 쓴 것(`error_joint_pos` 2.44 rad)과 레퍼런스가 지면에서 떠 있던
-것 때문에 수렴하지 않았습니다.
-
-이 클립을 PolySim 논문 표와 맞대지 않는 이유는 세 가지입니다. 첫째, 그 논문
-표 III에서 `IsaacSimDR → MuJoCo`의 0.100은 PolySim의 성적이 아니라 대조군인
-단일 시뮬레이터 DR 베이스라인입니다. PolySim 자신의 값은 마지막 행
-`IsaacSim+IsaacGym+Genesis`의 1.000입니다. 둘째, 논문이 쓴 14개 모션도 5개
-모션도 이름을 밝히지 않아 같은 집합을 맞출 수 없습니다. 전문에 나오는 모션
-이름은 Kobe 하나뿐입니다. 셋째, 학습기가 다릅니다. PolySim은 HumanoidVerse에
-ASAP 보상과 teacher-student이고 이쪽은 BeyondMimic입니다. 같은 LAFAN1·G1·
-BeyondMimic으로 돌린 Retargeting Matters가 sim2sim 성공률 대부분 100%를 받으므로,
-여기의 1.000은 PolySim을 이긴 값이 아니라 BeyondMimic 계보의 통상값입니다.
-
-## 정리 — 무엇이 되고 무엇이 안 되는가
-
-**된 것**
-
-| | 완주율 | E_g-mpbpe | E_mpbpe | E_mpjpe |
-|---|---|---|---|---|
-| 전문가 14개 (각자 자기 클립) | 99.0% | 102mm | 42mm | 0.084 |
-| **통합 정책 하나** | **99.7%** | **90mm** | **41mm** | **0.082** |
-
-단일 동작 전문가 14개를 정책 하나로 합쳤고 추적 정확도가 깎이지 않았습니다.
-관절각 오차는 소수 셋째 자리까지 같습니다. 여기에 MuJoCo 전이 12/14,
-도메인 랜덤화 하 76.1%, 리셋 없는 모션 전환 6/13이 딸려 나옵니다.
-
-막힌 곳은 하나였고 원인은 **용량**이었습니다. 14개 중 `aiming1` 한 클립만
-완주 9%로 계속 무너졌는데, 가설 열여섯 개를 반증한 끝에 학습 에피소드
-10초→40초와 망 4배가 답이었습니다. 최저 클립이 98.4%가 되었습니다.
-
-**안 되는 것**
-
-일반화입니다. LAFAN1의 나머지 63개 중 완주는 0개입니다. 다만 14클립은
-GMT(8,925)·SONIC(317,189)보다 자릿수가 셋 아래라 애초에 기대할 수 없는
-값입니다. 어디까지 되고 어디서 끊기는지를 63클립으로 정확히 그어 두었습니다.
-
-**손해 보는 것**
-
-교란 복구력입니다. 밀치기 아래에서 전문가들보다 7-8%p 낮습니다.
-추적 정확도는 유지되므로, 깎이는 것은 정확도가 아니라 복구력입니다.
-
-## 남은 일
-
-1. **학습 모션 수를 늘립니다.** 일반화를 논하려면 이것부터입니다.
-   LAFAN1 77개는 전부 리타게팅해 두었으므로 재료는 있습니다.
-   14 → 60개로 올리고 나머지 17개를 held-out으로 두면 test-repetition과
-   test-content가 의미 있는 크기가 됩니다.
-2. **DAgger 롤아웃에 교란을 넣습니다.** 통합 정책이 교란 복구에서 지는 것이
-   교사의 평균 행동만 배웠기 때문이라면, 밀린 상태에서 라벨을 받게 하면
-   달라질 것입니다.
-3. **리타게팅 선별을 다시 합니다.** 지금 기준은 발 오차인데 정책 성적을
-   예측하지 못했습니다. 지면 관통·공중 비율·발 미끄럼·관절속도 위반으로
-   다시 고르고, 관통은 순기구학으로 최저 높이를 재서 보정합니다
-   (Retargeting Matters 방식).
-4. **학습에 지연을 넣습니다.** 한 스텝(20ms) 지연에 완주율이 99.9%에서 29.6%로
-   떨어집니다. 도메인 랜덤화에 지연을 섞거나 명령 이력을 관측에 넣습니다.
-5. **보상 항이 무엇을 떠받치는지 잽니다(진행 중).** 보상은 BeyondMimic 것을 그대로
-   썼습니다. 추종 보상을 앵커·몸체 자세·속도 세 묶음으로 나눠 하나씩 빼고 같은
-   클립·같은 예산으로 학습해 비교합니다.
-6. **IGRIS-C 정책(진행 중).** 처음부터 학습한 것과 G1 정책에서 옮겨 온 것을 같은
-   클립에서 시간 대비로 비교합니다.
-7. **실제 로봇.** 지금 범위는 시뮬레이션까지입니다.
+이 저장소의 코드는 [MIT](LICENSE)입니다. 데이터셋과 로봇 모델은 각 원 저장소의 조건을 따릅니다.
