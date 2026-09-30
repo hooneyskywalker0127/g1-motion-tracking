@@ -43,7 +43,7 @@ parser.add_argument("--seq", required=True)
 parser.add_argument("--out", required=True)
 parser.add_argument("--start", type=float, default=0.0, help="초")
 parser.add_argument("--seconds", type=float, default=0.0, help="0이면 끝까지")
-parser.add_argument("--gap", type=float, default=2.0, help="셋 사이 간격(m). 1920 폭, 거리 4.2 에서 화면 3등분 자리")
+parser.add_argument("--gap", type=float, default=2.0, help="셋 사이 간격(m). 1920 폭, 화각 20도·거리 9.5 에서 화면 3등분 자리")
 parser.add_argument("--width", type=int, default=1920)
 parser.add_argument("--height", type=int, default=1080)
 parser.add_argument("--still", type=int, default=-1, help="이 프레임 하나만 png 로")
@@ -62,6 +62,9 @@ spec.worldbody.add_light(pos=[0, 0, 4], dir=[0, 0, -1], diffuse=[0.7, 0.7, 0.7])
 spec.visual.headlight.ambient = [0.35, 0.35, 0.35]
 spec.visual.global_.offwidth = args.width
 spec.visual.global_.offheight = args.height
+# 셋이 좌우로 2m 씩 떨어져 있어 화각이 넓으면 양끝을 보는 방향이 ±25도 갈라진다.
+# 같은 방향을 봐도 한쪽은 정면, 한쪽은 옆모습으로 보였다. 망원으로 ±12도까지 줄인다.
+spec.visual.global_.fovy = 20
 for prefix, name, *_ in ROBOTS:
     child = mj.MjSpec.from_file(str(ROBOT_XML_DICT[name]))
     frame = spec.worldbody.add_frame()
@@ -87,7 +90,7 @@ if args.still >= 0:
 
 renderer = mj.Renderer(model, height=args.height, width=args.width)
 cam = mj.MjvCamera()
-cam.distance = 4.2
+cam.distance = 9.5
 cam.elevation = -10
 cam.azimuth = 180  # -x 를 보므로 화면 왼쪽이 -y 다
 # 시각 형상(그룹 1)만 그린다. 충돌 형상은 G1 이 그룹 0, IGRIS 가 그룹 2(주황)에 있다.
