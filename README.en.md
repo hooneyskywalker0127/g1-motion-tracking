@@ -1,7 +1,10 @@
-# g1-motion-tracking
+# humanoid-motion-tracking
 
 A pipeline that moves human motion capture onto a humanoid and trains a whole-body
-control policy to track it. Built on the Unitree G1; a second robot, IGRIS-C, is being added.
+control policy to track it. It started on the Unitree G1; a second robot, IGRIS-C, is being added.
+
+> Formerly `g1-motion-tracking`, renamed when the second robot arrived. The Hugging Face repository
+> and the W&B projects keep the old name.
 
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
 [![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
