@@ -67,4 +67,4 @@ the anchor terms.
 ## Data
 
 - Training curves: [W&B](https://wandb.ai/hooneyskywalker-humanoid/g1-motion-tracking), group `reward_ablation_obstacles3`
-- Checkpoints and evaluations: [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies/tree/main/reward_ablation) `reward_ablation/`
+- Checkpoints and evaluations: [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies/tree/main/reward_ablation) `reward_ablation/`

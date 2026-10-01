@@ -3,16 +3,13 @@
 A pipeline that moves human motion capture onto a humanoid and trains a whole-body
 control policy to track it. It started on the Unitree G1; a second robot, IGRIS-C, is being added.
 
-> Formerly `g1-motion-tracking`, renamed when the second robot arrived. The Hugging Face repository
-> and the W&B projects keep the old name.
-
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
 [![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
 [![MuJoCo](https://img.shields.io/badge/MuJoCo-3.x-blue.svg)](https://mujoco.org/)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[**한국어**](README.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
+[**한국어**](README.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ![tracking](docs/tracking.gif)
 
@@ -124,7 +121,7 @@ linked rather than copied. Details: [docs/igris.en.md](docs/igris.en.md).
 
 ## Checkpoints
 
-On [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies).
+On [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies).
 
 | Folder | Contents |
 |---|---|

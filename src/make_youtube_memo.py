@@ -84,7 +84,7 @@ for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full2/*.npz")):
               "Criteria and definitions: BeyondMimic (arXiv:2508.08241) termination",
               "thresholds, PolySim (arXiv:2510.01708) 0.5 m, mjlab MPKPE/R-MPKPE.",
               "Code: github.com/hooneyskywalker0127/humanoid-motion-tracking",
-              "Policies: huggingface.co/hooneyskywalker/g1-motion-tracking-policies"]
+              "Policies: huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies"]
 
     body = "\n".join(lines)
     out_dir = f"{DEST}/{seq}/isaac_mujoco"

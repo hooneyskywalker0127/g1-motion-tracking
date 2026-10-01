@@ -3,16 +3,13 @@
 사람의 모션 캡처를 휴머노이드로 옮기고, 그 동작을 따라가는 전신 제어 정책을
 학습하는 파이프라인입니다. Unitree G1으로 시작했고 두 번째 로봇 IGRIS-C를 붙이고 있습니다.
 
-> 옛 이름은 `g1-motion-tracking`입니다. 두 번째 로봇이 붙어 이름을 바꿨습니다. Hugging Face 저장소와
-> W&B 프로젝트는 옛 이름 그대로 둡니다.
-
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
 [![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
 [![MuJoCo](https://img.shields.io/badge/MuJoCo-3.x-blue.svg)](https://mujoco.org/)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[**English**](README.en.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
+[**English**](README.en.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ![tracking](docs/tracking.gif)
 
@@ -123,7 +120,7 @@ IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://ar
 
 ## 체크포인트
 
-[Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies)에 있습니다.
+[Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies)에 있습니다.
 
 | 폴더 | 내용 |
 |---|---|
