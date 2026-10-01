@@ -11,6 +11,10 @@
   - 관절 토크 한계를 채운다. URDF 에는 effort="1000" 자리 값만 있다. MJCF 의 액추에이터
     클래스(actuator_150/120/90/60/8/7 → ±150/120/90/60/8/7 Nm)에서 관절마다 읽는다.
   - package:// 메시 경로를 절대 경로로 바꾼다.
+  - 관절 사이 하우징 링크(*_frame, *_bracket, waist_follower, *_wrist_rod)의 충돌 메시를 뺀다.
+    큰 링크 안에 묻힌 작은 링크들이라 메시가 설계상 겹치는데, PhysX 는 부모·자식만 자기 충돌에서
+    제외하고 조부모 쌍(골반↔고관절 브래킷, 몸통↔어깨 프레임)은 충돌시킨다. 리셋 직후 골반에 3만 N 이
+    걸려 로봇이 안에서 찢겼다(261001 주의 368). 몸통·골반·팔다리·발·손·머리 충돌은 그대로 둔다.
   - 빈 루트 base_link 와 base_joint(fixed)를 뺀다. IsaacLab 은 URDF 를 들일 때 fixed
     관절을 부모에 합쳐서, 두면 pelvis 가 base_link 로 흡수돼 이름이 사라진다.
 URDF 에는 MJCF 의 *_backlash 관절이 없어 따로 뺄 것이 없다. 31 자유도가 남는다.
@@ -53,6 +57,14 @@ for j in root.findall("joint"):
     j.find("limit").set("effort", str(effort[name]))
     n_actuated += 1
 
+HOUSING = ("_frame", "_bracket", "waist_follower", "_wrist_rod")
+n_col = 0
+for link in root.findall("link"):
+    if link.get("name").endswith(HOUSING) or link.get("name") in HOUSING:
+        for col in link.findall("collision"):
+            link.remove(col)
+            n_col += 1
+
 base = root.find("link[@name='base_link']")
 assert base is not None and len(base) == 0, "base_link 가 비어 있지 않다"
 root.remove(base)
@@ -63,4 +75,4 @@ for mesh in root.iter("mesh"):
 
 out.parent.mkdir(parents=True, exist_ok=True)
 tree.write(out)
-print(f"{out}: 구동 관절 {n_actuated}개, 손가락 {n_fixed}개 fixed")
+print(f"{out}: 구동 관절 {n_actuated}개, 손가락 {n_fixed}개 fixed, 하우징 충돌 메시 {n_col}개 제거")
