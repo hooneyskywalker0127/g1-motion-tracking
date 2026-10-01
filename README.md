@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[**English**](README.en.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+[**English**](README.en.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ![tracking](docs/tracking.gif)
 
@@ -108,7 +108,7 @@
   </tr>
 </table>
 
-전체 영상: [전체 클립](https://youtu.be/l1M4y_Nl7oc) · [학습 경과](https://youtu.be/qQw8PtmXV9s) · [도메인 랜덤화](https://youtu.be/d61rKk675qY) · [재생목록](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+전체 영상: [전체 클립](https://youtu.be/l1M4y_Nl7oc) · [학습 경과](https://youtu.be/qQw8PtmXV9s) · [도메인 랜덤화](https://youtu.be/d61rKk675qY) · [재생목록](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ## 지원 로봇
 

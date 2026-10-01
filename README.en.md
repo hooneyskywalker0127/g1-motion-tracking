@@ -12,7 +12,7 @@ control policy to track it. It started on the Unitree G1; a second robot, IGRIS-
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[**한국어**](README.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+[**한국어**](README.md) · [**Hugging Face**](https://huggingface.co/hooneyskywalker/g1-motion-tracking-policies) · [**W&B**](https://wandb.ai/hooneyskywalker-humanoid) · [**YouTube**](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ![tracking](docs/tracking.gif)
 
@@ -109,7 +109,7 @@ What works and what does not were both measured.
   </tr>
 </table>
 
-Full videos: [full clip](https://youtu.be/l1M4y_Nl7oc) · [training progression](https://youtu.be/qQw8PtmXV9s) · [domain randomization](https://youtu.be/d61rKk675qY) · [playlist](https://www.youtube.com/playlist?list=PLLNhmCfT2kPI)
+Full videos: [full clip](https://youtu.be/l1M4y_Nl7oc) · [training progression](https://youtu.be/qQw8PtmXV9s) · [domain randomization](https://youtu.be/d61rKk675qY) · [playlist](https://www.youtube.com/playlist?list=PLdtcYiDg1nhI)
 
 ## Supported robots
 
