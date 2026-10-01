@@ -65,5 +65,5 @@
 
 ## 자료
 
-- 학습 곡선: [W&B](https://wandb.ai/hooneyskywalker-humanoid/g1-motion-tracking) `reward_ablation_obstacles3` 그룹
+- 학습 곡선: [W&B](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking) `reward_ablation_obstacles3` 그룹
 - 체크포인트와 평가: [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies/tree/main/reward_ablation) `reward_ablation/`

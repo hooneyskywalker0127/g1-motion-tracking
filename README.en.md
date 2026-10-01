@@ -130,8 +130,8 @@ On [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-trackin
 | `eval/`, `eval_polysim/`, `sym/` | Teacher evaluations and MuJoCo transfer evaluations |
 
 Training curves are on [W&B](https://wandb.ai/hooneyskywalker-humanoid): teachers in the
-`stage4_teachers` group of the `g1-motion-tracking` project, distillation in the `final`
-group of `g1_distill`, the reward ablation in group `reward_ablation_obstacles3`.
+`stage4_teachers` group of the `humanoid-motion-tracking` project, distillation in the `final`
+group of `humanoid-motion-tracking-distill`, the reward ablation in group `reward_ablation_obstacles3`.
 
 ## Installation
 

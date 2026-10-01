@@ -129,7 +129,7 @@ IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://ar
 | `eval/`, `eval_polysim/`, `sym/` | 교사 평가, MuJoCo 전이 평가 |
 
 학습 곡선은 [W&B](https://wandb.ai/hooneyskywalker-humanoid)에 있습니다. 교사는
-`g1-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `g1_distill` 프로젝트의
+`humanoid-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `humanoid-motion-tracking-distill` 프로젝트의
 `final` 그룹, 보상 ablation은 `reward_ablation_obstacles3` 그룹입니다.
 
 ## 설치
