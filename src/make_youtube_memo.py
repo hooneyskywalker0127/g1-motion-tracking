@@ -83,7 +83,7 @@ for f in sorted(glob.glob(f"{R}/outputs/sim2sim_full2/*.npz")):
     lines += ["",
               "Criteria and definitions: BeyondMimic (arXiv:2508.08241) termination",
               "thresholds, PolySim (arXiv:2510.01708) 0.5 m, mjlab MPKPE/R-MPKPE.",
-              "Code: github.com/hooneyskywalker0127/g1-motion-tracking",
+              "Code: github.com/hooneyskywalker0127/humanoid-motion-tracking",
               "Policies: huggingface.co/hooneyskywalker/g1-motion-tracking-policies"]
 
     body = "\n".join(lines)
