@@ -23,6 +23,7 @@
 
 ## News
 
+- **[2026-10-01]** [보상 ablation](docs/reward_ablation.md): 추종 보상 세 묶음 모두 필요합니다. 앵커 항을 빼면 표류(전역 오차 1.25m), 몸체 자세 항을 빼면 2초 만에 쓰러집니다. 전역 위치를 붙잡는 몫은 앵커 항보다 속도 항이 더 컸습니다.
 - **[2026-09-30]** 두 번째 로봇 [IGRIS-C 리타게팅](docs/igris.md). C++ 실시간 추론 루프가 20ms 제어 예산에 10배 가까운 여유로 듭니다([견고성](docs/robustness.md)).
 - **[2026-09-29]** [모델 불일치 민감도](docs/robustness.md): 지연 한 스텝(20ms)에 완주율 99.9% → 29.6%. 평가 코드가 랜덤화를 켠 채 돌던 버그를 고쳐 비교를 바로잡았습니다. 지표 이름을 정의한 논문의 것으로 바꿨습니다.
 - **[2026-09-27]** 일반화 한계 측정: LAFAN1의 학습에 없던 63개 클립 중 완주 0개.
@@ -85,6 +86,7 @@
 | 제어 지연 1스텝(20ms) | **29.6%** — 가장 치명적 | [robustness](docs/robustness.md) |
 | 토크 ×0.7 / 질량 ×1.2 / 마찰 ×0.5 | 56.4% / 25.0% / 70.3% | [robustness](docs/robustness.md) |
 | 추론 지연 p99.9 (C++) | 1.15ms, 예산 20ms | [robustness](docs/robustness.md#실시간-추론-루프--20ms-예산-안에-드는가) |
+| 보상 한 묶음씩 빼기 (1만 회) | 앵커 3%, 몸체 자세 0%, 속도 55% (전부 쓴 쪽 63%) | [reward_ablation](docs/reward_ablation.md) |
 
 ## 데모
 
@@ -128,7 +130,7 @@ IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://ar
 
 학습 곡선은 [W&B](https://wandb.ai/hooneyskywalker-humanoid)에 있습니다. 교사는
 `g1-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `g1_distill` 프로젝트의
-`final` 그룹입니다.
+`final` 그룹, 보상 ablation은 `reward_ablation_obstacles3` 그룹입니다.
 
 ## 설치
 
@@ -208,6 +210,7 @@ data ->     데이터 심볼릭 링크 (gitignored)
 | [docs/robustness.md](docs/robustness.md) | 모델 불일치 민감도, 실시간 추론 루프 |
 | [docs/igris.md](docs/igris.md) | 두 번째 로봇 리타게팅과 관절 대응 |
 | [docs/kobe.md](docs/kobe.md) | 배경, LAFAN1 밖의 동작 |
+| [docs/reward_ablation.md](docs/reward_ablation.md) | 추종 보상 세 묶음을 하나씩 뺀 비교 |
 | [docs/data.md](docs/data.md) | 데이터 출처와 선택 이유 |
 
 ## TODO
@@ -218,7 +221,7 @@ data ->     데이터 심볼릭 링크 (gitignored)
 - [x] 일반화·교란·모델 불일치 한계 측정
 - [x] C++ 실시간 추론 루프
 - [x] 두 번째 로봇 IGRIS-C 리타게팅
-- [ ] 보상 항 ablation — 추종 보상 세 묶음을 하나씩 빼고 비교 (진행 중)
+- [x] 보상 항 ablation — 추종 보상 세 묶음을 하나씩 빼고 비교
 - [ ] IGRIS-C 정책 — 처음부터 학습 vs G1 정책에서 옮기기 (진행 중)
 - [ ] 학습에 지연 넣기 — 도메인 랜덤화에 지연, 또는 명령 이력을 관측에
 - [ ] 학습 모션 14 → 60개, 나머지를 held-out으로

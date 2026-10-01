@@ -24,6 +24,7 @@ tracking) end to end.
 
 ## News
 
+- **[2026-10-01]** [Reward ablation](docs/reward_ablation.en.md): all three groups of tracking rewards are needed. Without the anchor terms the robot drifts (1.25 m global error); without the body-pose terms it falls within two seconds. The velocity terms did more to hold global position than the anchor terms.
 - **[2026-09-30]** [IGRIS-C retargeting](docs/igris.en.md), a second robot. A C++ real-time inference loop fits the 20 ms control budget with close to a tenfold margin ([robustness](docs/robustness.en.md)).
 - **[2026-09-29]** [Model-mismatch sweep](docs/robustness.en.md): one step (20 ms) of latency drops completion from 99.9% to 29.6%. Fixed an evaluation bug that ran with randomization on and had inverted a comparison. Metrics renamed to the names used by the papers that define them.
 - **[2026-09-27]** Measured the generalization limit: 0 of the 63 held-out LAFAN1 clips complete.
@@ -86,6 +87,7 @@ What works and what does not were both measured.
 | One step (20 ms) of control latency | **29.6%** — the most damaging axis | [robustness](docs/robustness.en.md) |
 | Torque ×0.7 / mass ×1.2 / friction ×0.5 | 56.4% / 25.0% / 70.3% | [robustness](docs/robustness.en.md) |
 | Inference latency p99.9 (C++) | 1.15 ms against a 20 ms budget | [robustness](docs/robustness.en.md#real-time-inference-loop--does-it-fit-the-20-ms-budget) |
+| Removing one reward group (10k iterations) | anchor 3%, body pose 0%, velocity 55% (all rewards 63%) | [reward_ablation](docs/reward_ablation.en.md) |
 
 ## Demos
 
@@ -129,7 +131,7 @@ On [Hugging Face](https://huggingface.co/hooneyskywalker/g1-motion-tracking-poli
 
 Training curves are on [W&B](https://wandb.ai/hooneyskywalker-humanoid): teachers in the
 `stage4_teachers` group of the `g1-motion-tracking` project, distillation in the `final`
-group of `g1_distill`.
+group of `g1_distill`, the reward ablation in group `reward_ablation_obstacles3`.
 
 ## Installation
 
@@ -210,6 +212,7 @@ data ->     dataset symlink (gitignored)
 | [docs/robustness.en.md](docs/robustness.en.md) | model-mismatch sweep, real-time inference loop |
 | [docs/igris.en.md](docs/igris.en.md) | second-robot retargeting and joint mapping |
 | [docs/kobe.en.md](docs/kobe.en.md) | background, a motion from outside LAFAN1 |
+| [docs/reward_ablation.en.md](docs/reward_ablation.en.md) | removing each group of tracking rewards in turn |
 | [docs/data.en.md](docs/data.en.md) | data sources and why they were chosen |
 
 ## TODO
@@ -220,7 +223,7 @@ data ->     dataset symlink (gitignored)
 - [x] Measure the limits: generalization, perturbation, model mismatch
 - [x] C++ real-time inference loop
 - [x] Retarget onto a second robot, IGRIS-C
-- [ ] Reward ablation — remove each group of tracking rewards in turn (in progress)
+- [x] Reward ablation — remove each group of tracking rewards in turn
 - [ ] IGRIS-C policy — from scratch vs. transferred from the G1 policy (in progress)
 - [ ] Latency in training — randomize it, or put command history in the observation
 - [ ] 14 → 60 training motions with the rest held out
