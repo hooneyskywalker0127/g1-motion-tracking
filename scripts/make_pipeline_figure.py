@@ -68,6 +68,7 @@ def _draw_thumb(ax, path, left, width):
         th = max_h
         tw = th * iw / ih
     cx = left + width / 2
+    top -= (max_h - th) / 2  # 낮은 썸네일은 칸 사이 화살표 높이로 내린다
     ax.imshow(img, extent=(cx - tw / 2, cx + tw / 2, top - th, top), aspect="auto", zorder=3)
 
 
