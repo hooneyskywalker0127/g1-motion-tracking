@@ -81,7 +81,7 @@ def main(out):
     ax.set_xlim(0, total_w); ax.set_ylim(0, 860); ax.axis("off")
     fig.patch.set_facecolor("white")
 
-    ax.text(65, 745, "LAFAN1 → 휴머노이드(Unitree G1 · IGRIS-C) 모션 트래킹 파이프라인",
+    ax.text(65, 745, "LAFAN1 → 휴머노이드 모션 트래킹 파이프라인",
             fontsize=33, color="#222222")
 
     n_nophys = sum(1 for s in STAGES if not s["physics"])
