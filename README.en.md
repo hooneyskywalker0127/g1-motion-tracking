@@ -114,7 +114,7 @@ Full videos: [full clip](https://youtu.be/l1M4y_Nl7oc) · [training progression]
 
 | Robot | DoF | Height / mass | Retargeting | Teachers | Consolidation | sim-to-sim |
 |---|---|---|---|---|---|---|
-| Unitree G1 | 29 | 1.32 m / 35 kg | ✅ 77 LAFAN1 clips | ✅ 17 | ✅ 14 → 1 | ✅ MuJoCo |
+| Unitree G1 | 29 | 1.32 m / 35 kg | ✅ 77 LAFAN1 clips | ✅ 14 | ✅ 14 → 1 | ✅ MuJoCo |
 | [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5 m / 58 kg | ✅ 14 clips | ✅ 1 (run2) | — | — |
 
 ![igris_transfer](docs/igris_transfer.png)
@@ -224,7 +224,7 @@ data ->     dataset symlink (gitignored)
 
 ## TODO
 
-- [x] Retarget all 77 LAFAN1 clips, train 17 teachers
+- [x] Retarget all 77 LAFAN1 clips, train 14 teachers
 - [x] Distill 14 teachers into one policy
 - [x] MuJoCo sim-to-sim
 - [x] Measure the limits: generalization, perturbation, model mismatch

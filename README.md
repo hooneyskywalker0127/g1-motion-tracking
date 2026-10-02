@@ -113,7 +113,7 @@
 
 | 로봇 | 자유도 | 키 / 무게 | 리타게팅 | 교사 학습 | 통합 | sim-to-sim |
 |---|---|---|---|---|---|---|
-| Unitree G1 | 29 | 1.32m / 35kg | ✅ LAFAN1 77개 | ✅ 17개 | ✅ 14 → 1 | ✅ MuJoCo |
+| Unitree G1 | 29 | 1.32m / 35kg | ✅ LAFAN1 77개 | ✅ 14개 | ✅ 14 → 1 | ✅ MuJoCo |
 | [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | ✅ 1개 (run2) | — | — |
 
 ![igris_transfer](docs/igris_transfer.png)
@@ -222,7 +222,7 @@ data ->     데이터 심볼릭 링크 (gitignored)
 
 ## TODO
 
-- [x] LAFAN1 77개 리타게팅, 교사 정책 17개
+- [x] LAFAN1 77개 리타게팅, 교사 정책 14개
 - [x] 교사 14개 → 통합 정책 하나 (증류)
 - [x] MuJoCo sim-to-sim
 - [x] 일반화·교란·모델 불일치 한계 측정
