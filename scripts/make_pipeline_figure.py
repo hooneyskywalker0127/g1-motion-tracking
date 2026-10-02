@@ -38,7 +38,7 @@ STAGES = [
                "npz 변환 · 50 fps"]),
     dict(no="4단계", name="Motion tracking policy", physics=True, thumb="stage_4.png",
          body=["BeyondMimic · PPO",
-               "G1 19개 중 17개 학습",
+               "G1 14개 학습",
                "IGRIS-C 14개 학습 중"]),
     dict(no="5단계", name="Policy distillation", physics=True, thumb="stage_5.png",
          body=["HOVER · DAgger",
