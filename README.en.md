@@ -134,6 +134,7 @@ On [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-trackin
 | `eval/`, `eval_polysim/`, `sym/` | Teacher evaluations and MuJoCo transfer evaluations |
 | `igris_c/` | The two IGRIS-C policies (from scratch, Any2Any), per-checkpoint evaluations, the joint map |
 | `reward_ablation/` | Checkpoints and evaluations for the four reward-ablation conditions |
+| `tables/`, `media/` | Result tables, figures and GIFs |
 
 Training curves are on [W&B](https://wandb.ai/hooneyskywalker-humanoid): teachers in the
 `stage4_teachers` group of the `humanoid-motion-tracking` project, distillation in the `final`

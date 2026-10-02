@@ -133,6 +133,7 @@ IGRIS-C에서 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https:/
 | `eval/`, `eval_polysim/`, `sym/` | 교사 평가, MuJoCo 전이 평가 |
 | `igris_c/` | IGRIS-C 정책 두 개(처음부터, Any2Any)와 체크포인트별 평가, 관절 대응표 |
 | `reward_ablation/` | 보상 ablation 네 조건의 체크포인트와 평가 |
+| `tables/`, `media/` | 결과 표, 그림과 GIF |
 
 학습 곡선은 [W&B](https://wandb.ai/hooneyskywalker-humanoid)에 있습니다. 교사는
 `humanoid-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `humanoid-motion-tracking-distill` 프로젝트의
