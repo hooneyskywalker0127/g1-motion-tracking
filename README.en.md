@@ -24,6 +24,7 @@ tracking) end to end.
 
 ## News
 
+- **[2026-10-02]** [Two fixes in the IGRIS-C retargeting](docs/igris.en.md): with the G1 settings the elbows lock straight, and measuring the legs to the ankle sinks the feet 1.8 cm into the floor for the whole walk. The retargeting table is what has to change when the robot changes.
 - **[2026-10-02]** [IGRIS-C policy](docs/igris.en.md#training-from-scratch-vs-transferring-the-g1-policy): the same running clip trained from scratch (96% completion) vs. the G1 policy transferred the Any2Any way (16%). Transfer learns ten times faster early on but stops lower. At first nothing learned at all because of self-collision.
 - **[2026-10-01]** [Reward ablation](docs/reward_ablation.en.md): all three groups of tracking rewards are needed. Without the anchor terms the robot drifts (1.25 m global error); without the body-pose terms it falls within two seconds. The velocity terms did more to hold global position than the anchor terms.
 - **[2026-09-30]** [IGRIS-C retargeting](docs/igris.en.md), a second robot. A C++ real-time inference loop fits the 20 ms control budget with close to a tenfold margin ([robustness](docs/robustness.en.md)).

@@ -25,6 +25,17 @@ derived from the G1 one, and two things were wrong.
   Scaling by sole height cut the clips with more than 3 cm of penetration from 14 to 4.
   The remaining four have crouching or crawling.
 
+![igris_fix_arm](igris_fix_arm.png)
+
+![igris_fix_leg](igris_fix_leg.png)
+
+Each fix undone on its own and the same clip retargeted again (first 15 s of each clip).
+With the G1 forearm offsets, the elbows in `aiming1_subject1` sit on the straight-arm limit
+in every frame and the aiming pose never appears. Measuring the legs to the ankle puts the
+soles of `walk1_subject1` below the floor in every frame, 1.8 cm on average and 3.9 cm at
+worst. A physics simulator cannot reproduce a foot below the floor, so however well the policy
+learns, that much stays as tracking error.
+
 The model has no license file, so no IGRIS-C mesh or XML is in this repository. The
 scripts in `scripts/igris/` read a local clone and write locally.
 
