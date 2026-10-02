@@ -1,7 +1,7 @@
 # humanoid-motion-tracking
 
 사람의 모션 캡처를 휴머노이드로 옮기고, 그 동작을 따라가는 전신 제어 정책을
-학습하는 파이프라인입니다. Unitree G1으로 시작했고 두 번째 로봇 IGRIS-C를 붙이고 있습니다.
+학습하는 파이프라인입니다. Unitree G1으로 시작했고 두 번째 로봇 IGRIS-C로 넓혔습니다.
 
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
 [![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
@@ -23,6 +23,7 @@
 
 ## News
 
+- **[2026-10-02]** [IGRIS-C 정책](docs/igris.md#처음부터-학습-vs-g1-정책에서-옮기기): 같은 달리기 클립을 처음부터 학습한 것(완주 96%)과 G1 정책을 Any2Any 방식으로 옮긴 것(16%)을 비교했습니다. 옮긴 쪽이 초반엔 10배 빨리 배우지만 낮게 멈춥니다. 처음엔 자기 충돌 때문에 전혀 학습되지 않았습니다.
 - **[2026-10-01]** [보상 ablation](docs/reward_ablation.md): 추종 보상 세 묶음 모두 필요합니다. 앵커 항을 빼면 표류(전역 오차 1.25m), 몸체 자세 항을 빼면 2초 만에 쓰러집니다. 전역 위치를 붙잡는 몫은 앵커 항보다 속도 항이 더 컸습니다.
 - **[2026-09-30]** 두 번째 로봇 [IGRIS-C 리타게팅](docs/igris.md). C++ 실시간 추론 루프가 20ms 제어 예산에 10배 가까운 여유로 듭니다([견고성](docs/robustness.md)).
 - **[2026-09-29]** [모델 불일치 민감도](docs/robustness.md): 지연 한 스텝(20ms)에 완주율 99.9% → 29.6%. 평가 코드가 랜덤화를 켠 채 돌던 버그를 고쳐 비교를 바로잡았습니다. 지표 이름을 정의한 논문의 것으로 바꿨습니다.
@@ -86,6 +87,7 @@
 | 제어 지연 1스텝(20ms) | **29.6%** — 가장 치명적 | [robustness](docs/robustness.md) |
 | 토크 ×0.7 / 질량 ×1.2 / 마찰 ×0.5 | 56.4% / 25.0% / 70.3% | [robustness](docs/robustness.md) |
 | 추론 지연 p99.9 (C++) | 1.15ms, 예산 20ms | [robustness](docs/robustness.md#실시간-추론-루프--20ms-예산-안에-드는가) |
+| IGRIS-C 처음부터 vs G1 정책 옮기기 (run2, 1000프레임부터) | 96% vs 16% — 이 설정에선 처음부터가 이김 | [igris](docs/igris.md#처음부터-학습-vs-g1-정책에서-옮기기) |
 | 보상 한 묶음씩 빼기 (1만 회) | 앵커 3%, 몸체 자세 0%, 속도 55% (전부 쓴 쪽 63%) | [reward_ablation](docs/reward_ablation.md) |
 
 ## 데모
@@ -112,10 +114,12 @@
 | 로봇 | 자유도 | 키 / 무게 | 리타게팅 | 교사 학습 | 통합 | sim-to-sim |
 |---|---|---|---|---|---|---|
 | Unitree G1 | 29 | 1.32m / 35kg | ✅ LAFAN1 77개 | ✅ 17개 | ✅ 14 → 1 | ✅ MuJoCo |
-| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | 진행 중 | — | — |
+| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | ✅ 1개 (run2) | — | — |
 
-IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://arxiv.org/abs/2605.23733))과
-처음부터 학습하는 것을 비교하고 있습니다. 모델 파일에 라이선스가 없어 저장소에 복사하지 않고
+![igris_transfer](docs/igris_transfer.png)
+
+IGRIS-C에서 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://arxiv.org/abs/2605.23733))과
+처음부터 학습하는 것을 비교했습니다. 모델 파일에 라이선스가 없어 저장소에 복사하지 않고
 원 저장소를 링크합니다. 자세한 것은 [docs/igris.md](docs/igris.md).
 
 ## 체크포인트
@@ -127,10 +131,12 @@ IGRIS-C는 G1 정책을 옮겨 쓰는 것([cross-embodiment transfer](https://ar
 | `student/` | 통합 정책 하나(`final_model.pt`, `policy.onnx`)와 평가 결과. 은닉 [2048, 2048, 1024, 1024, 512], 관측 260, 행동 29 |
 | `policies/<시퀀스>/` | 클립별 교사 정책 17개(`model_29999.pt`, `policy.onnx`) |
 | `eval/`, `eval_polysim/`, `sym/` | 교사 평가, MuJoCo 전이 평가 |
+| `igris_c/` | IGRIS-C 정책 두 개(처음부터, Any2Any)와 체크포인트별 평가, 관절 대응표 |
+| `reward_ablation/` | 보상 ablation 네 조건의 체크포인트와 평가 |
 
 학습 곡선은 [W&B](https://wandb.ai/hooneyskywalker-humanoid)에 있습니다. 교사는
 `humanoid-motion-tracking` 프로젝트의 `stage4_teachers` 그룹, 증류는 `humanoid-motion-tracking-distill` 프로젝트의
-`final` 그룹, 보상 ablation은 `reward_ablation_obstacles3` 그룹입니다.
+`final` 그룹, 보상 ablation은 `reward_ablation_obstacles3`, IGRIS-C는 `igris_c_transfer` 그룹입니다.
 
 ## 설치
 
@@ -222,7 +228,7 @@ data ->     데이터 심볼릭 링크 (gitignored)
 - [x] C++ 실시간 추론 루프
 - [x] 두 번째 로봇 IGRIS-C 리타게팅
 - [x] 보상 항 ablation — 추종 보상 세 묶음을 하나씩 빼고 비교
-- [ ] IGRIS-C 정책 — 처음부터 학습 vs G1 정책에서 옮기기 (진행 중)
+- [x] IGRIS-C 정책 — 처음부터 학습 vs G1 정책에서 옮기기
 - [ ] 학습에 지연 넣기 — 도메인 랜덤화에 지연, 또는 명령 이력을 관측에
 - [ ] 학습 모션 14 → 60개, 나머지를 held-out으로
 - [ ] DAgger 롤아웃에 교란 넣기 (복구력)

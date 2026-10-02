@@ -1,7 +1,7 @@
 # humanoid-motion-tracking
 
 A pipeline that moves human motion capture onto a humanoid and trains a whole-body
-control policy to track it. It started on the Unitree G1; a second robot, IGRIS-C, is being added.
+control policy to track it. It started on the Unitree G1 and now covers a second robot, IGRIS-C.
 
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-5.1-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/)
 [![IsaacLab](https://img.shields.io/badge/IsaacLab-2.3.2-silver.svg)](https://isaac-sim.github.io/IsaacLab/)
@@ -24,6 +24,7 @@ tracking) end to end.
 
 ## News
 
+- **[2026-10-02]** [IGRIS-C policy](docs/igris.en.md#training-from-scratch-vs-transferring-the-g1-policy): the same running clip trained from scratch (96% completion) vs. the G1 policy transferred the Any2Any way (16%). Transfer learns ten times faster early on but stops lower. At first nothing learned at all because of self-collision.
 - **[2026-10-01]** [Reward ablation](docs/reward_ablation.en.md): all three groups of tracking rewards are needed. Without the anchor terms the robot drifts (1.25 m global error); without the body-pose terms it falls within two seconds. The velocity terms did more to hold global position than the anchor terms.
 - **[2026-09-30]** [IGRIS-C retargeting](docs/igris.en.md), a second robot. A C++ real-time inference loop fits the 20 ms control budget with close to a tenfold margin ([robustness](docs/robustness.en.md)).
 - **[2026-09-29]** [Model-mismatch sweep](docs/robustness.en.md): one step (20 ms) of latency drops completion from 99.9% to 29.6%. Fixed an evaluation bug that ran with randomization on and had inverted a comparison. Metrics renamed to the names used by the papers that define them.
@@ -87,6 +88,7 @@ What works and what does not were both measured.
 | One step (20 ms) of control latency | **29.6%** — the most damaging axis | [robustness](docs/robustness.en.md) |
 | Torque ×0.7 / mass ×1.2 / friction ×0.5 | 56.4% / 25.0% / 70.3% | [robustness](docs/robustness.en.md) |
 | Inference latency p99.9 (C++) | 1.15 ms against a 20 ms budget | [robustness](docs/robustness.en.md#real-time-inference-loop--does-it-fit-the-20-ms-budget) |
+| IGRIS-C from scratch vs. transferred G1 policy (run2, from frame 1000) | 96% vs. 16% — from scratch wins on this setup | [igris](docs/igris.en.md#training-from-scratch-vs-transferring-the-g1-policy) |
 | Removing one reward group (10k iterations) | anchor 3%, body pose 0%, velocity 55% (all rewards 63%) | [reward_ablation](docs/reward_ablation.en.md) |
 
 ## Demos
@@ -113,10 +115,12 @@ Full videos: [full clip](https://youtu.be/l1M4y_Nl7oc) · [training progression]
 | Robot | DoF | Height / mass | Retargeting | Teachers | Consolidation | sim-to-sim |
 |---|---|---|---|---|---|---|
 | Unitree G1 | 29 | 1.32 m / 35 kg | ✅ 77 LAFAN1 clips | ✅ 17 | ✅ 14 → 1 | ✅ MuJoCo |
-| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5 m / 58 kg | ✅ 14 clips | in progress | — | — |
+| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5 m / 58 kg | ✅ 14 clips | ✅ 1 (run2) | — | — |
+
+![igris_transfer](docs/igris_transfer.png)
 
 For IGRIS-C, reusing the G1 policy ([cross-embodiment transfer](https://arxiv.org/abs/2605.23733))
-is being compared with training from scratch. The model files have no license, so they are
+was compared with training from scratch. The model files have no license, so they are
 linked rather than copied. Details: [docs/igris.en.md](docs/igris.en.md).
 
 ## Checkpoints
@@ -128,10 +132,12 @@ On [Hugging Face](https://huggingface.co/hooneyskywalker/humanoid-motion-trackin
 | `student/` | The unified policy (`final_model.pt`, `policy.onnx`) and its evaluations. Hidden [2048, 2048, 1024, 1024, 512], 260 observations, 29 actions |
 | `policies/<sequence>/` | The 17 per-clip teachers (`model_29999.pt`, `policy.onnx`) |
 | `eval/`, `eval_polysim/`, `sym/` | Teacher evaluations and MuJoCo transfer evaluations |
+| `igris_c/` | The two IGRIS-C policies (from scratch, Any2Any), per-checkpoint evaluations, the joint map |
+| `reward_ablation/` | Checkpoints and evaluations for the four reward-ablation conditions |
 
 Training curves are on [W&B](https://wandb.ai/hooneyskywalker-humanoid): teachers in the
 `stage4_teachers` group of the `humanoid-motion-tracking` project, distillation in the `final`
-group of `humanoid-motion-tracking-distill`, the reward ablation in group `reward_ablation_obstacles3`.
+group of `humanoid-motion-tracking-distill`, the reward ablation in group `reward_ablation_obstacles3`, IGRIS-C in group `igris_c_transfer`.
 
 ## Installation
 
@@ -224,7 +230,7 @@ data ->     dataset symlink (gitignored)
 - [x] C++ real-time inference loop
 - [x] Retarget onto a second robot, IGRIS-C
 - [x] Reward ablation — remove each group of tracking rewards in turn
-- [ ] IGRIS-C policy — from scratch vs. transferred from the G1 policy (in progress)
+- [x] IGRIS-C policy — from scratch vs. transferred from the G1 policy
 - [ ] Latency in training — randomize it, or put command history in the observation
 - [ ] 14 → 60 training motions with the rest held out
 - [ ] Perturbation in the DAgger rollouts (recovery)

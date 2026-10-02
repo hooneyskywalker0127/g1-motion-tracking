@@ -46,3 +46,51 @@ joint name is wrong: the waist axes have opposite signs, the elbows zero 90° ap
 because the forearms point along different axes the wrist roll and yaw swap. Signs and
 offsets were fitted on the same 14 clips retargeted onto both robots; every one of the
 29 pairs correlates at |r| ≥ 0.72.
+
+## Training from scratch vs. transferring the G1 policy
+
+![igris_transfer](igris_transfer.png)
+
+The same clip was learned on IGRIS-C two ways. The clip is the most dynamic of the fourteen,
+`run2_subject4` (running, 2.0 m/s root speed, 245 s).
+
+- **A (from scratch):** BeyondMimic PPO on IGRIS-C from a random policy.
+- **B (transfer):** the G1 expert for the same clip (PPO), moved the
+  [Any2Any](https://arxiv.org/abs/2605.23733) way. Joints are mapped onto the G1 slots (no training), the
+  expert's weights are frozen, and LoRA on every actor layer and the critic hidden layers is the only thing
+  trained (rank 9, 5.0% of parameters, paper 5.26%). PPO settings are the expert's own.
+
+Both 30,000 iterations. Evaluation: 100 rollouts, domain randomization off, final checkpoint.
+
+| Start frame | A completion | B completion | A posture error E_mpbpe | B posture error E_mpbpe |
+|---|---|---|---|---|
+| 0 | 21% | 0% | 59 mm | — |
+| 1000 | 96% | 16% | 59 mm | 69 mm |
+| 4000 | 98% | 35% | 59 mm | 71 mm |
+| 8000 | 98% | 57% | 60 mm | 71 mm |
+
+**On this setup, training from scratch wins.** B learns far faster at first: training episode length at
+iteration 100 is 12.5 for A and 172 for B, and B passes in 100 iterations what A reaches at 1,000. Then it
+stops lower. A frozen 35 kg G1 policy with a 5% low-rank correction does not seem to cover a 58 kg body with
+different leg length and motors; I have not verified this. The paper transferred a large policy trained on
+all of AMASS (SONIC); here the source is a single-clip expert. The starting policies differ in scale.
+
+A also manages only 21% from frame 0. Most rollouts fall in the first 20 seconds, going from standing into
+a run; skip 1000 frames and it is 96-98%. Global position error is about 1.7 m for both, accumulated drift
+over 245 s of running.
+
+The comparison is per iteration. The ~9 hours spent training the G1 expert that B starts from are not counted.
+
+### Getting IGRIS-C to learn at all
+
+The first two attempts did not learn: episode length 5 after 8,500 iterations (G1: 397 at the same point).
+
+1. **PD gains.** The G1 rule (kp = armature·ω²) gave IGRIS a hip kp of 790 because of its large armature,
+   shrinking one action unit to 0.047 rad (G1: 0.55). Switching to G1's kp/torque ratio alone did not help.
+2. **Self-collision (the real cause).** Logging physics right after reset showed 31,000 N on the pelvis. The
+   vendor meshes overlap by design at pelvis/thigh, torso/upper arm and hand/forearm, and PhysX was resolving
+   collisions inside the body. With self-collision off, as in Isaac Lab's own G1 and H1 configs, the force
+   went to 0 N and learning followed a G1-like curve.
+
+Checkpoints and evaluations: [Hugging Face `igris_c/`](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies/tree/main/igris_c) ·
+training curves: [W&B `igris_c_transfer`](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking)
