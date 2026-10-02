@@ -45,6 +45,7 @@ scripts in `scripts/igris/` read a local clone and write locally.
 | `scripts/igris/prepare_urdf.py` | URDF for training; fills the placeholder torque limits from the MJCF actuators |
 | `scripts/igris/make_ik_config.py` | derives the IGRIS-C IK table from the G1 one |
 | `scripts/igris/compare_retarget.py` | compares both robots' retargets on foot penetration, joint limits and velocity spikes |
+| `scripts/igris/results_table.py` | builds the per-clip IGRIS vs. G1 table in the section below |
 | `scripts/igris/fit_slot_map.py` | maps IGRIS-C joints onto the G1 policy's 29 slots (below) |
 | `src/render_retarget_two.py` | renders the clip above |
 
@@ -103,5 +104,21 @@ The first two attempts did not learn: episode length 5 after 8,500 iterations (G
    collisions inside the body. With self-collision off, as in Isaac Lab's own G1 and H1 configs, the force
    went to 0 N and learning followed a G1-like curve.
 
+## All 14 clips from scratch (in progress)
+
+IGRIS-C is being trained on the same 14 clips as the G1 teachers, the same way (BeyondMimic PPO, 30,000
+iterations, from scratch). Evaluation: 100 rollouts from frame 0, domain randomization off. Rows are added
+as clips finish (`scripts/igris/results_table.py`).
+
+<!-- igris-table -->
+| Clip | G1 completion | IGRIS completion | G1 E_mpbpe (mm) | IGRIS E_mpbpe (mm) | G1 E_mpjpe (rad) | IGRIS E_mpjpe (rad) |
+|---|---|---|---|---|---|---|
+| aiming1_subject1 | 100% | 100% | 35 | 36 | 0.080 | 0.091 |
+| run2_subject4 | 99% | 21% | 47 | 59 | 0.111 | 0.105 |
+<!-- /igris-table -->
+
+run2_subject4 falls in the first 20 s, going from standing into a run, so it completes 21% from frame 0
+(section above).
+
 Checkpoints and evaluations: [Hugging Face `igris_c/`](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies/tree/main/igris_c) ·
-training curves: [W&B `igris_c_transfer`](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking)
+training curves: [W&B `igris_c_transfer`, `igris_c_scratch`](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking)

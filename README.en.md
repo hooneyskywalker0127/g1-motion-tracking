@@ -116,7 +116,7 @@ Full videos: [full clip](https://youtu.be/l1M4y_Nl7oc) · [training progression]
 | Robot | DoF | Height / mass | Retargeting | Teachers | Consolidation | sim-to-sim |
 |---|---|---|---|---|---|---|
 | Unitree G1 | 29 | 1.32 m / 35 kg | ✅ 77 LAFAN1 clips | ✅ 14 | ✅ 14 → 1 | ✅ MuJoCo |
-| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5 m / 58 kg | ✅ 14 clips | ✅ 1 (run2) | — | — |
+| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5 m / 58 kg | ✅ 14 clips | ✅ 2 (14 in training) | — | — |
 
 ![igris_transfer](docs/igris_transfer.png)
 

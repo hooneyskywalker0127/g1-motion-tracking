@@ -115,7 +115,7 @@
 | 로봇 | 자유도 | 키 / 무게 | 리타게팅 | 교사 학습 | 통합 | sim-to-sim |
 |---|---|---|---|---|---|---|
 | Unitree G1 | 29 | 1.32m / 35kg | ✅ LAFAN1 77개 | ✅ 14개 | ✅ 14 → 1 | ✅ MuJoCo |
-| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | ✅ 1개 (run2) | — | — |
+| [IGRIS-C](https://github.com/robrosinc/igris_c_description_public) | 31 | 1.5m / 58kg | ✅ 14개 | ✅ 2개 (14개 학습 중) | — | — |
 
 ![igris_transfer](docs/igris_transfer.png)
 

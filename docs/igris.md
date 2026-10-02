@@ -44,6 +44,7 @@ G1 팔 오프셋을 그대로 쓰면 `aiming1_subject1`에서 팔꿈치가 매 �
 | `scripts/igris/prepare_urdf.py` | 학습용 URDF. 공개 URDF의 자리 값 토크 한계를 MJCF 액추에이터 값으로 채웁니다 |
 | `scripts/igris/make_ik_config.py` | G1 IK 표에서 IGRIS-C 표를 만듭니다 |
 | `scripts/igris/compare_retarget.py` | 두 로봇의 리타게팅을 발 관통·관절 한계·속도 튐으로 비교합니다 |
+| `scripts/igris/results_table.py` | 클립별 IGRIS 평가를 G1과 나란히 표로 만들어 아래 절에 넣습니다 |
 | `scripts/igris/fit_slot_map.py` | IGRIS-C 관절을 G1 정책의 29 슬롯에 대응시킵니다(아래) |
 | `src/render_retarget_two.py` | 위 영상을 렌더합니다 |
 
@@ -99,5 +100,20 @@ A도 프레임 0부터는 21%뿐입니다. 정지 상태에서 달리기로 들�
    몸통↔위팔, 손↔팔뚝에서 설계상 겹쳐, PhysX가 몸 안에서 충돌을 계산하고 있었습니다. Isaac Lab 공식 G1·H1 설정처럼
    자기 충돌을 끄자 0 N이 되고, 그때부터 G1과 비슷한 곡선으로 배웠습니다.
 
+## 14개 클립을 처음부터 (진행 중)
+
+G1 교사와 같은 14개 클립을 IGRIS-C에서 같은 방식(BeyondMimic PPO, 3만 회, 처음부터)으로 학습하고 있습니다.
+평가는 프레임 0부터 100 롤아웃, 도메인 랜덤화 끔. 끝나는 대로 줄이 늘어납니다
+(`scripts/igris/results_table.py`).
+
+<!-- igris-table -->
+| 클립 | G1 완주 | IGRIS 완주 | G1 E_mpbpe (mm) | IGRIS E_mpbpe (mm) | G1 E_mpjpe (rad) | IGRIS E_mpjpe (rad) |
+|---|---|---|---|---|---|---|
+| aiming1_subject1 | 100% | 100% | 35 | 36 | 0.080 | 0.091 |
+| run2_subject4 | 99% | 21% | 47 | 59 | 0.111 | 0.105 |
+<!-- /igris-table -->
+
+run2_subject4는 정지 상태에서 달리기로 들어가는 첫 20초에서 쓰러져 프레임 0 완주가 21%입니다(위 절).
+
 체크포인트와 평가: [Hugging Face `igris_c/`](https://huggingface.co/hooneyskywalker/humanoid-motion-tracking-policies/tree/main/igris_c) ·
-학습 곡선: [W&B `igris_c_transfer`](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking)
+학습 곡선: [W&B `igris_c_transfer`, `igris_c_scratch`](https://wandb.ai/hooneyskywalker-humanoid/humanoid-motion-tracking)
