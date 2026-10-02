@@ -94,16 +94,16 @@
 
 <table>
   <tr>
-    <td align="center"><img src="docs/retargeting.gif" width="360"/><br/>리타게팅 (사람 → G1)</td>
-    <td align="center"><img src="docs/tracking.gif" width="360"/><br/>추종 정책 (Isaac Lab)</td>
+    <td align="center"><img src="docs/demo/retargeting.gif" width="360"/><br/>리타게팅 (사람 → G1)</td>
+    <td align="center"><img src="docs/demo/tracking.gif" width="360"/><br/>추종 정책 (Isaac Lab)</td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/sim2sim.gif" width="360"/><br/>sim-to-sim (Isaac Lab | MuJoCo)</td>
-    <td align="center"><img src="docs/randomization.gif" width="360"/><br/>도메인 랜덤화</td>
+    <td align="center"><img src="docs/demo/sim2sim.gif" width="360"/><br/>sim-to-sim (Isaac Lab | MuJoCo)</td>
+    <td align="center"><img src="docs/demo/randomization.gif" width="360"/><br/>도메인 랜덤화</td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/kobe.gif" width="360"/><br/>LAFAN1 밖의 동작 (ASAP kobe)</td>
-    <td align="center"><img src="docs/igris_scratch_vs_transfer.gif" width="360"/><br/>IGRIS-C: 처음부터 학습 | G1 정책에서 옮기기</td>
+    <td align="center"><img src="docs/demo/kobe.gif" width="360"/><br/>LAFAN1 밖의 동작 (ASAP kobe)</td>
+    <td align="center"><img src="docs/demo/igris_scratch_vs_transfer.gif" width="360"/><br/>IGRIS-C: 처음부터 학습 | G1 정책에서 옮기기</td>
   </tr>
 </table>
 
