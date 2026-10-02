@@ -104,7 +104,7 @@ What works and what does not were both measured.
   </tr>
   <tr>
     <td align="center"><img src="docs/kobe.gif" width="360"/><br/>Outside LAFAN1 (ASAP kobe)</td>
-    <td align="center"><img src="docs/retarget_igris.gif" width="360"/><br/>One clip, two robots (G1 | human | IGRIS-C)</td>
+    <td align="center"><img src="docs/igris_scratch_vs_transfer.gif" width="360"/><br/>IGRIS-C: from scratch | transferred from G1</td>
   </tr>
 </table>
 

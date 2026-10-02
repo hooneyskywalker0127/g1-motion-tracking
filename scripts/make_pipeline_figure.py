@@ -29,25 +29,25 @@ STAGES = [
                "bvh 77개 · 30 fps",
                "배우 5명 · 4.6시간"]),
     dict(no="2단계", name="Retargeting", physics=False, thumb="stage_2.png",
-         body=["GMR · IK로 G1 관절값 역산",
-               "손끝·발끝 위치를 목표로",
-               "77개 · 496,672 프레임"]),
+         body=["GMR · IK로 로봇 관절값 역산",
+               "G1 77개 · 496,672 프레임",
+               "IGRIS-C 14개 · IK 표 새로"]),
     dict(no="3단계", name="Reference motion", physics=False, thumb="stage_3.png",
          body=["발 오차 세 조건으로 선별",
-               "77개 → 19개",
+               "G1 77개 → 19개",
                "npz 변환 · 50 fps"]),
     dict(no="4단계", name="Motion tracking policy", physics=True, thumb="stage_4.png",
          body=["BeyondMimic · PPO",
-               "모션 1개당 정책 1개",
-               "19개 중 17개 학습"]),
+               "G1 19개 중 17개 학습",
+               "IGRIS-C 14개 학습 중"]),
     dict(no="5단계", name="Policy distillation", physics=True, thumb="stage_5.png",
          body=["HOVER · DAgger",
-               "완주한 14개를 교사로",
-               "교사 14개 → 학생 1개"]),
+               "G1 교사 14개 → 학생 1개",
+               "IGRIS-C는 아직"]),
 ]
 
 NOTE = ("4단계까지는 모션 1개당 정책 1개다. 5단계가 그것들을 정책 하나로 합친다. "
-        "평가 기준은 GMR 논문(arXiv 2510.02252)을 따른다.")
+        "로봇을 바꿀 때는 IK 표와 로봇 모델만 바꾼다. 평가 기준은 GMR 논문(arXiv 2510.02252).")
 
 W, GAP, X0 = 382, 20, 75
 BOX_BOTTOM, BOX_H = 150, 500
@@ -81,7 +81,7 @@ def main(out):
     ax.set_xlim(0, total_w); ax.set_ylim(0, 860); ax.axis("off")
     fig.patch.set_facecolor("white")
 
-    ax.text(65, 745, "LAFAN1 → Unitree G1 모션 트래킹 파이프라인",
+    ax.text(65, 745, "LAFAN1 → 휴머노이드(Unitree G1 · IGRIS-C) 모션 트래킹 파이프라인",
             fontsize=33, color="#222222")
 
     n_nophys = sum(1 for s in STAGES if not s["physics"])

@@ -103,7 +103,7 @@
   </tr>
   <tr>
     <td align="center"><img src="docs/kobe.gif" width="360"/><br/>LAFAN1 밖의 동작 (ASAP kobe)</td>
-    <td align="center"><img src="docs/retarget_igris.gif" width="360"/><br/>같은 클립, 두 로봇 (G1 | 사람 | IGRIS-C)</td>
+    <td align="center"><img src="docs/igris_scratch_vs_transfer.gif" width="360"/><br/>IGRIS-C: 처음부터 학습 | G1 정책에서 옮기기</td>
   </tr>
 </table>
 
